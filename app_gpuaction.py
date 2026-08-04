@@ -13,6 +13,18 @@ load_dotenv()
 # Set Resend API key
 resend.api_key = os.getenv("GPU_RESEND_API_KEY") or os.getenv("RESEND_API_KEY")
 
+# Stripe real payment integration
+try:
+    import stripe
+    stripe.api_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
+    STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID", "")  # Recurring $49/mo price ID from Stripe dashboard
+    STRIPE_ENABLED = bool(stripe.api_key)
+except ImportError:
+    STRIPE_ENABLED = False
+    print("[Warning] stripe package not installed. Run: pip install stripe")
+
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "gpu_action_secret_2026")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "gpuaction2026!")
@@ -359,6 +371,152 @@ def simulate_upgrade():
         })
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
+# ──────────────────────────────────────────────────────────────────
+# REAL STRIPE PAYMENT ENDPOINTS
+# ──────────────────────────────────────────────────────────────────
+
+@app.route('/api/v1/create_checkout_session', methods=['POST'])
+def create_checkout_session():
+    """Creates a real Stripe Checkout Session and returns the redirect URL."""
+    if not STRIPE_ENABLED:
+        return jsonify({"success": False, "message": "Stripe is not configured on this server."}), 503
+
+    data = request.get_json(silent=True) or request.form or {}
+    license_key = data.get('license_key', '').strip()
+    plan_type = data.get('plan_type', 'Developer Pass ($49/mo)').strip()
+
+    if not license_key:
+        return jsonify({"success": False, "message": "License key is required."}), 400
+
+    try:
+        base_url = request.host_url.rstrip('/')
+        success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&license_key={license_key}"
+        cancel_url = f"{base_url}/dashboard"
+
+        if STRIPE_PRICE_ID:
+            # Use pre-created recurring Price ID from Stripe dashboard (preferred)
+            line_items = [{'price': STRIPE_PRICE_ID, 'quantity': 1}]
+            mode = 'subscription'
+        else:
+            # Fallback: create price on the fly using price_data
+            line_items = [{
+                'price_data': {
+                    'currency': 'usd',
+                    'recurring': {'interval': 'month'},
+                    'product_data': {
+                        'name': 'SpotWarp Developer Pass',
+                        'description': 'Zero-Downtime Spot GPU Failover Guard & AI Workload Autopilot — Monthly Subscription',
+                    },
+                    'unit_amount': 4900,  # $49.00 USD in cents
+                },
+                'quantity': 1,
+            }]
+            mode = 'subscription'
+
+        session_obj = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode=mode,
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={'license_key': license_key, 'plan_type': plan_type},
+            client_reference_id=license_key,
+        )
+
+        return jsonify({'success': True, 'checkout_url': session_obj.url, 'session_id': session_obj.id})
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/v1/stripe_webhook', methods=['POST'])
+def stripe_webhook():
+    """Receives Stripe Webhook events and activates/extends licenses on payment."""
+    if not STRIPE_ENABLED:
+        return jsonify({'received': False}), 503
+
+    payload = request.get_data(as_text=True)
+    sig_header = request.headers.get('Stripe-Signature', '')
+
+    try:
+        if STRIPE_WEBHOOK_SECRET:
+            event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        else:
+            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+    except Exception as e:
+        print(f"[Webhook] Signature verification failed: {e}")
+        return jsonify({'error': str(e)}), 400
+
+    event_type = event['type']
+    print(f"[Webhook] Received Stripe event: {event_type}")
+
+    if event_type in ('checkout.session.completed', 'invoice.payment_succeeded'):
+        session_data = event['data']['object']
+        license_key = (
+            session_data.get('client_reference_id') or
+            (session_data.get('metadata') or {}).get('license_key', '')
+        )
+        customer_email = session_data.get('customer_details', {}).get('email', '') or session_data.get('customer_email', '')
+
+        if license_key:
+            from datetime import timedelta
+            new_expire = (datetime.now() + timedelta(days=365)).strftime('%Y-%m-%d %H:%M:%S')
+            conn = get_db()
+            cursor = conn.cursor()
+            lic = cursor.execute("SELECT id FROM licenses WHERE license_key = ?", (license_key,)).fetchone()
+            if lic:
+                cursor.execute(
+                    "UPDATE licenses SET plan = ?, expire_date = ?, status = 'Active' WHERE license_key = ?",
+                    ('Developer Pass ($49/mo)', new_expire, license_key)
+                )
+            else:
+                cursor.execute(
+                    "INSERT INTO licenses (license_key, email, plan, expire_date, status) VALUES (?, ?, ?, ?, ?)",
+                    (license_key, customer_email, 'Developer Pass ($49/mo)', new_expire, 'Active')
+                )
+            conn.commit()
+            conn.close()
+
+            alert_msg = (
+                f"💳 <b>[SpotWarp: REAL Stripe Payment Received!]</b>\n\n"
+                f"🔑 <b>License Key:</b> <code>{license_key}</code>\n"
+                f"📧 <b>Customer Email:</b> {customer_email}\n"
+                f"📦 <b>Plan:</b> Developer Pass ($49/mo)\n"
+                f"⏱️ <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+            send_telegram_alert(alert_msg)
+            print(f"[Webhook] License {license_key} successfully activated/renewed.")
+
+    elif event_type in ('customer.subscription.deleted', 'invoice.payment_failed'):
+        session_data = event['data']['object']
+        # Attempt to find license by metadata
+        meta = (session_data.get('metadata') or {})
+        license_key = meta.get('license_key', '')
+        if license_key:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE licenses SET status = 'Expired' WHERE license_key = ?", (license_key,))
+            conn.commit()
+            conn.close()
+            print(f"[Webhook] License {license_key} marked as Expired.")
+
+    return jsonify({'received': True})
+
+
+@app.route('/payment-success')
+def payment_success():
+    """Landing page after successful Stripe checkout."""
+    session_id = request.args.get('session_id', '')
+    license_key = request.args.get('license_key', '')
+    return render_template('index.html', payment_success=True, license_key=license_key)
+
+
+@app.route('/payment-cancel')
+def payment_cancel():
+    """Landing page after cancelled Stripe checkout."""
+    return redirect('/dashboard')
+
 
 @app.route('/')
 def index():

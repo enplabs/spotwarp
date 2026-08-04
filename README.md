@@ -1,6 +1,6 @@
 # ⚡ SpotWarp: Zero-Downtime Spot GPU Failover Guard & Auto-Resumer
 
-[![PyPI Version](https://img.shields.io/badge/pypi-v3.0.4-blue.svg)](https://pypi.org/project/spotwarp/)
+[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi)](https://pypi.org/project/spotwarp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Security: Audited](https://img.shields.io/badge/Security-Zero--Key--Leakage-green.svg)](https://spotwarp.com)
 

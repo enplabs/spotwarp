@@ -806,18 +806,9 @@
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting to Stripe...';
             }
-            
-            // Wait 1 second to simulate redirection
-            await new Promise(r => setTimeout(r, 1000));
-            
-            if (btn) {
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing simulated checkout...';
-            }
-            
-            await new Promise(r => setTimeout(r, 1000));
-            
+
             try {
-                const resp = await fetch('/api/v1/simulate_upgrade', {
+                const resp = await fetch('/api/v1/create_checkout_session', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -826,24 +817,36 @@
                     })
                 });
                 const data = await resp.json();
-                if (data.success) {
-                    alert("Stripe Sandbox Payment Successful!\n\nYour license has been upgraded to a permanent Developer Pass ($49/month).");
-                    window.location.reload();
-                } else {
-                    alert("Upgrade failed: " + data.message);
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)';
+
+                if (data.success && data.checkout_url) {
+                    // Redirect to real Stripe Checkout page
+                    window.location.href = data.checkout_url;
+                } else if (!data.success && data.message && data.message.includes("not configured")) {
+                    // Stripe not yet set up on server — fall back to simulate for internal testing
+                    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing (Sandbox)...';
+                    const r2 = await fetch('/api/v1/simulate_upgrade', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ license_key: "{{ license.license_key }}", plan_type: planType })
+                    });
+                    const d2 = await r2.json();
+                    if (d2.success) {
+                        alert("Stripe Sandbox Payment Successful!\n\nYour license has been upgraded to Developer Pass ($49/month).");
+                        window.location.reload();
+                    } else {
+                        alert("Upgrade failed: " + d2.message);
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
                     }
+                } else {
+                    alert("Could not initiate checkout: " + (data.message || "Unknown error"));
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
                 }
             } catch (err) {
                 alert("Error connecting to server. Please try again.");
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)';
-                }
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
             }
         }
+
 
         // Live Simulated Log Stream Animation
         const logsBox = document.getElementById("terminal-logs");

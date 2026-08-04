@@ -45,7 +45,17 @@ if [ $# -eq 0 ]; then
     echo "🚀 Starting Jupyter Notebook..."
     # Check if jupyter is installed, fallback to bash if not
     if command -v jupyter &> /dev/null; then
-        exec jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+        # Never expose Jupyter with no auth. Use a caller-provided token if
+        # set, otherwise generate a random one and print it — an open port
+        # 8888 with no token/password on a rented host is an open remote
+        # code execution risk for anyone who can reach it.
+        if [ -z "$JUPYTER_TOKEN" ]; then
+            JUPYTER_TOKEN=$(python3 -c "import secrets; print(secrets.token_hex(24))")
+            echo "🔐 No JUPYTER_TOKEN provided — generated one for this session:"
+            echo "🔐 $JUPYTER_TOKEN"
+            echo "🔐 Use it to log in, or set JUPYTER_TOKEN yourself next time."
+        fi
+        exec jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="$JUPYTER_TOKEN"
     else
         echo "Jupyter not found. Dropping to bash..."
         exec /bin/bash

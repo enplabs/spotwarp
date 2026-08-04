@@ -79,7 +79,7 @@ class GpuActionGuard:
         self.resume_cmd = resume_cmd
         self.headers = {"Accept": "application/json", "Authorization": f"Bearer {self.vast_api_key}"}
         self.is_valid_license = False
-        self.tracked_instances = {}  # maps instance_id -> (host, ssh_port, host_id)
+        self.tracked_instances = {}  # maps instance_id -> (host, ssh_port, host_id, gpu_name)
         self.backup_threads = {}
         self.stop_events = {}
         
@@ -343,10 +343,25 @@ class GpuActionGuard:
             self.total_failovers += 1
             
         self.stop_backup_sync(evicted_id)
-        
-        print("[*] Finding cheapest alternative RTX 3090 on Vast.ai...")
+
+        # Match the replacement to the GPU model that was actually evicted,
+        # instead of always hunting for an RTX 3090 (a user who was training
+        # on an H100/A100 shouldn't get silently downgraded).
+        KNOWN_MODELS = [
+            "h100", "h200", "a100", "a6000", "a5000", "a4000", "l40s", "l40",
+            "l4", "v100", "4090", "3090", "4080", "3080"
+        ]
+        evicted_gpu_lower = (evicted_gpu or "").lower()
+        match_token = next((m for m in KNOWN_MODELS if m in evicted_gpu_lower), None)
+        if not match_token and evicted_gpu_lower and evicted_gpu_lower != "unknown":
+            match_token = evicted_gpu_lower
+        if not match_token:
+            match_token = "3090"
+            print(f"[!] Evicted GPU type unknown — defaulting search to RTX 3090 as a safe budget fallback.")
+
+        print(f"[*] Finding cheapest alternative matching '{match_token}' on Vast.ai...")
         q = {"rentable": {"eq": True}, "order": [["dph_total", "asc"]], "limit": 200}
-        
+
         matched_offer = None
         try:
             r_query = requests.get('https://cloud.vast.ai/api/v0/bundles/', params={'q': json.dumps(q)}, headers=self.headers, timeout=15)
@@ -355,14 +370,14 @@ class GpuActionGuard:
                 for o in offers:
                     name = o.get('gpu_name', '').lower()
                     host_id = o.get('host_id')
-                    if '3090' in name and host_id != evicted_host_id:
+                    if match_token in name and host_id != evicted_host_id:
                         matched_offer = o
                         break
         except Exception:
             pass
 
         if not matched_offer:
-            print("[-] No rentable alternative RTX 3090 found on Vast.ai.")
+            print(f"[-] No rentable alternative matching '{match_token}' found on Vast.ai.")
             # FALLBACK TO RUNPOD
             if self.runpod_api_key:
                 print("[*] Falling back to RunPod for cross-cloud replacement...")
@@ -371,8 +386,10 @@ class GpuActionGuard:
                     from runpod_connector import RunPodGPUConnector
                     rp_client = RunPodGPUConnector(api_key=self.runpod_api_key)
                     
-                    # Request RunPod spot Pod (RTX 3090)
-                    res = rp_client.request_gpu_spot_pod(gpu_type="NVIDIA RTX 3090")
+                    # Request a RunPod spot Pod matching the evicted GPU type
+                    # where possible (falls back to RTX 3090 if unknown).
+                    runpod_gpu_type = evicted_gpu if evicted_gpu and evicted_gpu.lower() != "unknown" else "NVIDIA RTX 3090"
+                    res = rp_client.request_gpu_spot_pod(gpu_type=runpod_gpu_type)
                     if res:
                         new_id = f"runpod_{res['pod_id']}"
                         new_host = res['ip']
@@ -527,22 +544,45 @@ class GpuActionGuard:
         self.total_failovers = getattr(self, 'total_failovers', 0)
         self.saved_dollars = 0.0
         self.saved_percentage = 70
-        
+
+        # Rough reference on-demand $/hr per GPU model, used only to estimate
+        # savings against what the user is *actually* paying (dph_total from
+        # Vast.ai) — this is still an estimate, not a measurement, since we
+        # have no way to know what they'd have really paid otherwise. Falls
+        # back to a conservative 3x spot-vs-on-demand ratio for unlisted
+        # models rather than a single flat number for every GPU tier.
+        ONDEMAND_REFERENCE = {
+            "h100": 4.50, "h200": 5.50, "a100": 1.80, "a6000": 0.90,
+            "a5000": 0.55, "a4000": 0.35, "l40s": 1.20, "l40": 1.10,
+            "l4": 0.45, "v100": 0.70, "4090": 0.70, "3090": 0.45,
+            "4080": 0.55, "3080": 0.40,
+        }
+
+        def estimate_ondemand_price(gpu_name: str, actual_price: float) -> float:
+            name = (gpu_name or "").lower()
+            for token, price in ONDEMAND_REFERENCE.items():
+                if token in name:
+                    return price
+            return actual_price * 3.0
+
         def report_worker():
-            # Estimate savings incremental per tick (30s)
-            # Spot instance average: $0.22/hr. Equivalent Dedicated instance: $0.90/hr.
-            # Saved = $0.68/hr per active instance.
-            # 30 seconds is 1/120 of an hour.
-            # Saved per instance per tick = 0.68 / 120 = 0.00567
             tick_seconds = 30
-            
+
             while not self.reporting_stop_event.is_set():
                 try:
-                    active_count = len(self.tracked_instances)
-                    if active_count > 0:
-                        savings_per_tick = (0.68 / (3600 / tick_seconds)) * active_count
+                    status = self.check_vast_status()
+                    running_instances = [
+                        i for i in status.get("instances", [])
+                        if i.get('actual_status') == 'running'
+                    ] if status.get("status") == "ok" else []
+                    active_count = len(running_instances)
+
+                    for inst in running_instances:
+                        actual_price = inst.get('dph_total') or 0.22
+                        ondemand_price = estimate_ondemand_price(inst.get('gpu_name'), actual_price)
+                        savings_per_tick = max(0.0, (ondemand_price - actual_price)) * (tick_seconds / 3600)
                         self.saved_dollars += savings_per_tick
-                        
+
                     payload = {
                         "license_key": self.license_key,
                         "active_instances_count": active_count,
@@ -597,8 +637,9 @@ class GpuActionGuard:
                 host = inst.get('ssh_host')
                 port = inst.get('ssh_port')
                 host_id = inst.get('host_id')
-                self.tracked_instances[inst_id] = (host, port, host_id)
-                print(f"[Tracked] Monitoring active instance: {inst_id} (Host {host_id})")
+                gpu_name = inst.get('gpu_name', 'Unknown')
+                self.tracked_instances[inst_id] = (host, port, host_id, gpu_name)
+                print(f"[Tracked] Monitoring active instance: {inst_id} (Host {host_id}, GPU: {gpu_name})")
                 self.start_backup_sync(inst_id, host, port)
 
         try:
@@ -608,10 +649,14 @@ class GpuActionGuard:
                 if res.get("status") == "ok":
                     current_instances = res.get("instances", [])
                     
-                    for tracked_id, (host, port, host_id) in list(self.tracked_instances.items()):
+                    for tracked_id, (host, port, host_id, tracked_gpu_name) in list(self.tracked_instances.items()):
                         matching_inst = next((i for i in current_instances if i['id'] == tracked_id), None)
                         if not matching_inst or matching_inst.get('actual_status') != 'running':
-                            gpu_name = matching_inst.get('gpu_name', 'Unknown') if matching_inst else 'Unknown'
+                            # Prefer the live gpu_name if Vast still reports the
+                            # instance; fall back to what we recorded when we
+                            # started tracking it, since an evicted instance
+                            # often disappears from the listing entirely.
+                            gpu_name = matching_inst.get('gpu_name', tracked_gpu_name) if matching_inst else tracked_gpu_name
                             self.handle_failover(tracked_id, host_id, gpu_name)
                             del self.tracked_instances[tracked_id]
 
@@ -620,8 +665,9 @@ class GpuActionGuard:
                         if inst_id not in self.tracked_instances and inst.get('actual_status') == 'running':
                             host = inst.get('ssh_host')
                             port = inst.get('ssh_port')
-                            self.tracked_instances[inst_id] = (host, port, inst.get('host_id'))
-                            print(f"\n[Tracked] Found new active instance: {inst_id} (Host {inst.get('host_id')})")
+                            gpu_name = inst.get('gpu_name', 'Unknown')
+                            self.tracked_instances[inst_id] = (host, port, inst.get('host_id'), gpu_name)
+                            print(f"\n[Tracked] Found new active instance: {inst_id} (Host {inst.get('host_id')}, GPU: {gpu_name})")
                             self.start_backup_sync(inst_id, host, port)
 
                     print(f"[{time.strftime('%H:%M:%S')}] Guard Status: Healthy. Monitoring {len(self.tracked_instances)} instances.", end="\r")

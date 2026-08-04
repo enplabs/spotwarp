@@ -12,7 +12,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://gpu-action.com/">
     <meta property="og:title" content="GPU-Action | Zero-Downtime Spot GPU Failover Guard">
-    <meta property="og:description" content="Run LLM & AI Workloads on cheap Spot GPUs with 0% downtime. 100% local execution, zero-key storage, instant 0.05s failover.">
+    <meta property="og:description" content="Run LLM & AI Workloads on cheap Spot GPUs with 0% downtime. 100% local execution, zero-key storage, automatic eviction failover.">
     <meta property="og:image" content="https://gpu-action.com/static/brand_assets/og_image.png">
 
     <title>GPU-Action | Zero-Downtime Spot GPU Failover Guard</title>
@@ -446,7 +446,7 @@
                 <i class="fa-solid fa-shield-halved"></i> 100% Local Execution • Zero-Key Storage • PyPI Verified
             </div>
             <h1>Cut AI GPU Costs by 70% with<br><span class="highlight">0% Downtime Spot-Failover Guard</span></h1>
-            <p>Run your LLM, Stable Diffusion & PyTorch workloads on cheap Spot GPUs (Vast.ai, RunPod, AWS Spot). Our 100% local daemon detects evictions in 0.05s and reroutes seamlessly without dropping connections or exposing API keys.</p>
+            <p>Run your LLM, Stable Diffusion & PyTorch workloads on cheap Spot GPUs (Vast.ai, RunPod, AWS Spot). Our 100% local daemon watches for eviction warnings and reroutes automatically, without exposing your API keys to the rented host.</p>
 
             <!-- Code snippet -->
             <div class="code-box">
@@ -486,7 +486,7 @@
         <div class="pillars">
             <div class="pillar-card">
                 <div class="pillar-icon"><i class="fa-solid fa-shield-virus"></i></div>
-                <h3>0.05s Instant Spot Failover</h3>
+                <h3>Automatic Spot Failover</h3>
                 <p>Detect eviction warnings before Spot instances crash. Automatically launch pre-warmed fallback nodes and seamlessly reroute active inference HTTP requests without dropping state.</p>
             </div>
             <div class="pillar-card">
@@ -541,7 +541,7 @@
                 <div class="price">$49 <span>/ month</span></div>
                 <ul class="price-features">
                     <li><i class="fa-solid fa-check"></i> 100% Local Failover Guard Daemon</li>
-                    <li><i class="fa-solid fa-check"></i> 0.05s Instant Spot Rerouting</li>
+                    <li><i class="fa-solid fa-check"></i> Automatic Spot Rerouting</li>
                     <li><i class="fa-solid fa-check"></i> Zero-Key Leakage Security</li>
                     <li><i class="fa-solid fa-check"></i> Live Node Intelligence Feed</li>
                     <li><i class="fa-solid fa-check"></i> Up to 8 Concurrent Spot GPUs</li>

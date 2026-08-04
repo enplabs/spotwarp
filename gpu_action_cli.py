@@ -21,6 +21,7 @@ import requests
 import subprocess
 import threading
 import shutil
+import tempfile
 
 # Standardize terminal encoding to UTF-8 on Windows
 if sys.platform == 'win32':
@@ -139,28 +140,80 @@ class GpuActionGuard:
         """Spawns background loop to sync files from remote container to local PC."""
         if inst_id in self.backup_threads:
             return
-        
+
         stop_event = threading.Event()
         self.stop_events[inst_id] = stop_event
-        
+
+        # Files modified more recently than this are assumed to still be
+        # mid-write on the source and are skipped for this cycle, to avoid
+        # backing up a torn/incomplete checkpoint. They'll be picked up once
+        # they've settled on a later cycle.
+        SETTLE_SECONDS = 10
+        # Large checkpoints can legitimately take longer than one 30s cycle
+        # to transfer; a too-short timeout meant the single biggest file in
+        # a workspace could silently never get backed up.
+        SYNC_TIMEOUT = 600
+
+        def log_backup_event(message):
+            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+            line = f"[{timestamp}] {message}"
+            print(f"\n[Backup] {message}")
+            try:
+                log_path = os.path.abspath(os.path.join(".", "backups", str(inst_id), "sync_errors.log"))
+                os.makedirs(os.path.dirname(log_path), exist_ok=True)
+                with open(log_path, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+            except Exception:
+                pass
+
         def sync_worker():
             local_backup_dir = os.path.abspath(os.path.join(".", "backups", str(inst_id)))
             os.makedirs(local_backup_dir, exist_ok=True)
-            
+
             if self.use_rsync:
                 print(f"\n[Backup] Started background high-speed delta 'rsync' for instance {inst_id} to {local_backup_dir}")
             else:
                 print(f"\n[Backup] Started background backup sync ('scp' fallback) for instance {inst_id} to {local_backup_dir}")
-            
+
             null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-            
+            ssh_opts = f"ssh -p {port} -o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}"
+            consecutive_failures = 0
+
             while not stop_event.is_set():
                 try:
+                    exclude_file = None
                     if self.use_rsync:
-                        cmd = [
-                            "rsync",
-                            "-az",
-                            "-e", f"ssh -p {port} -o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}",
+                        # Ask the remote host which files are "fresh" (recently
+                        # modified) and exclude them from this pass, so we don't
+                        # copy a file mid-write. Best-effort: if this fails
+                        # (e.g. minimal busybox find on the container), fall
+                        # back to syncing everything.
+                        try:
+                            find_cmd = [
+                                "ssh", "-p", str(port),
+                                "-o", "StrictHostKeyChecking=no",
+                                "-o", f"UserKnownHostsFile={null_file}",
+                                f"root@{host}",
+                                f"find /workspace/ -type f -newermt '-{SETTLE_SECONDS} seconds' 2>/dev/null"
+                            ]
+                            fresh = subprocess.run(find_cmd, capture_output=True, text=True, timeout=20)
+                            fresh_paths = [
+                                p.strip()[len("/workspace/"):]
+                                for p in fresh.stdout.splitlines()
+                                if p.strip().startswith("/workspace/")
+                            ]
+                            if fresh_paths:
+                                fd, exclude_file = tempfile.mkstemp(prefix="spotwarp_exclude_")
+                                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                                    f.write("\n".join(fresh_paths))
+                        except Exception:
+                            exclude_file = None
+
+                        cmd = ["rsync", "-az", "--partial-dir=.spotwarp-partial"]
+                        if exclude_file:
+                            cmd += [f"--exclude-from={exclude_file}"]
+                        cmd += [
+                            "-e", ssh_opts,
                             f"root@{host}:/workspace/",
                             local_backup_dir + "/"
                         ]
@@ -174,10 +227,32 @@ class GpuActionGuard:
                             f"root@{host}:/workspace/.",
                             local_backup_dir
                         ]
-                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
-                except Exception:
-                    pass
-                
+
+                    try:
+                        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=SYNC_TIMEOUT)
+                        if result.returncode == 0:
+                            consecutive_failures = 0
+                        else:
+                            consecutive_failures += 1
+                            log_backup_event(
+                                f"sync attempt failed (exit {result.returncode}): "
+                                f"{result.stderr.decode(errors='replace')[:300]}"
+                            )
+                    except subprocess.TimeoutExpired:
+                        consecutive_failures += 1
+                        log_backup_event(f"sync attempt exceeded {SYNC_TIMEOUT}s timeout — will retry next cycle")
+                    finally:
+                        if exclude_file and os.path.exists(exclude_file):
+                            os.remove(exclude_file)
+
+                    if consecutive_failures in (3, 10) or (consecutive_failures > 10 and consecutive_failures % 20 == 0):
+                        log_backup_event(
+                            f"WARNING: {consecutive_failures} consecutive backup sync failures for instance {inst_id} — "
+                            f"this instance may not actually be protected right now."
+                        )
+                except Exception as e:
+                    log_backup_event(f"unexpected sync error: {e}")
+
                 for _ in range(30):
                     if stop_event.is_set():
                         break
@@ -227,7 +302,7 @@ class GpuActionGuard:
             ]
             
         try:
-            r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
+            r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
             if r.returncode == 0:
                 print("[Restore] SUCCESS: Workload workspace migrated successfully!")
                 new_backup_dir = os.path.abspath(os.path.join(".", "backups", str(new_inst_id)))

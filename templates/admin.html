@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU-Action | Admin Command Center</title>
+    <!-- Outfit & Inter Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-deep: #030712;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --border-glow: rgba(249, 115, 22, 0.15);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            
+            --accent-orange: #f97316;
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-cyan: #06b6d4;
+            
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 5%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 95%, rgba(249, 115, 22, 0.04) 0%, transparent 45%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.5;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Header Area */
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-left i {
+            font-size: 2.2rem;
+            color: var(--accent-orange);
+            text-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+            margin: 0;
+        }
+
+        .admin-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .btn-logout {
+            padding: 10px 20px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-logout:hover {
+            background: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Section Container */
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 40px 0 20px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--accent-cyan);
+        }
+
+        /* Glass Tables */
+        .table-container {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 16px 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        td {
+            padding: 16px 20px;
+            font-size: 0.9rem;
+            color: #e2e8f0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        /* Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-Pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-Matched {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-Cancelled {
+            background: rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .status-Active {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-Expired {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        select {
+            background: #0f172a;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: #ffffff;
+            padding: 6px 12px;
+            cursor: pointer;
+            outline: none;
+            font-size: 0.85rem;
+            transition: border-color 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="header-left">
+                <i class="fa-solid fa-gauge-high"></i>
+                <div>
+                    <h1>GPU-Action Command Console</h1>
+                    <div class="admin-subtitle">Centrally Managed Autopilot & Waitlist Directory</div>
+                </div>
+            </div>
+            <a href="/admin/logout" class="btn-logout">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </a>
+        </div>
+
+        <!-- 1. Licenses & Live Daemons (New Section) -->
+        <div class="section-title">
+            <i class="fa-solid fa-key"></i> <span>Licenses & Guard Status</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>License Key</th>
+                        <th>Email</th>
+                        <th>Plan</th>
+                        <th>Status</th>
+                        <th>Active Nodes</th>
+                        <th>Failovers</th>
+                        <th>Savings</th>
+                        <th>Last Heartbeat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lic in licenses %}
+                    <tr>
+                        <td><span class="code-font" style="color: var(--accent-cyan);">{{ lic.license_key }}</span></td>
+                        <td><strong>{{ lic.email }}</strong></td>
+                        <td>{{ lic.plan or 'Developer Pass' }}</td>
+                        <td>
+                            <span class="status-badge status-{{ lic.status }}">{{ lic.status }}</span>
+                        </td>
+                        <td><strong style="color: #ffffff;">{{ lic.active_instances_count or 0 }}</strong> Nodes</td>
+                        <td><strong style="color: var(--accent-orange);">{{ lic.total_failovers or 0 }}</strong> Times</td>
+                        <td><strong style="color: var(--accent-emerald);">${{ "%.2f"|format(lic.saved_dollars or 0.0) }}</strong> ({{ lic.saved_percentage or 70 }}%)</td>
+                        <td>
+                            {% if lic.last_reported_at %}
+                            <span style="color: #ffffff;">{{ lic.last_reported_at }}</span>
+                            {% else %}
+                            <span style="color: var(--text-muted);">Awaiting Connection</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not licenses %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px 0;">No active licenses found.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. Demands Section (Buyer Needs) -->
+        <div class="section-title">
+            <i class="fa-solid fa-arrow-down-long"></i> <span>GPU Demand Requests</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Requester</th>
+                        <th>GPU Model</th>
+                        <th>Qty</th>
+                        <th>Duration</th>
+                        <th>Notes</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for demand in demands %}
+                    <tr id="demand-row-{{ demand.id }}">
+                        <td>{{ demand.created_at }}</td>
+                        <td>
+                            <strong>{{ demand.name }}</strong><br>
+                            <span style="font-size: 0.8em; color: var(--text-muted);">{{ demand.email }}</span>
+                        </td>
+                        <td><code class="code-font" style="color: var(--accent-blue);">{{ demand.gpu_model }}</code></td>
+                        <td><strong>{{ demand.quantity }}</strong></td>
+                        <td>{{ demand.duration }}</td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ demand.notes }}">{{ demand.notes }}</td>
+                        <td>
+                            <span id="demand-badge-{{ demand.id }}" class="status-badge status-{{ demand.status }}">{{ demand.status }}</span>
+                        </td>
+                        <td>
+                            <select onchange="updateStatus('demands', {{ demand.id }}, this.value)">
+                                <option value="Pending" {% if demand.status == 'Pending' %}selected{% endif %}>Pending</option>
+                                <option value="Matched" {% if demand.status == 'Matched' %}selected{% endif %}>Matched</option>
+                                <option value="Cancelled" {% if demand.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not demands %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px 0;">No demand requests found.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 3. Supplies Section (Seller Offers) -->
+        <div class="section-title">
+            <i class="fa-solid fa-arrow-up-long"></i> <span>GPU Supply Listings</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Provider</th>
+                        <th>GPU Model</th>
+                        <th>Qty</th>
+                        <th>Target Price</th>
+                        <th>Network/Specs</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for supply in supplies %}
+                    <tr id="supply-row-{{ supply.id }}">
+                        <td>{{ supply.created_at }}</td>
+                        <td>
+                            <strong>{{ supply.name }}</strong><br>
+                            <span style="font-size: 0.8em; color: var(--text-muted);">{{ supply.email }}</span>
+                        </td>
+                        <td><code class="code-font" style="color: var(--accent-emerald);">{{ supply.gpu_model }}</code></td>
+                        <td><strong>{{ supply.quantity }}</strong></td>
+                        <td><strong style="color: var(--accent-orange);">{{ supply.price }}</strong></td>
+                        <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ supply.specs }}">{{ supply.specs }}</td>
+                        <td>
+                            <span id="supply-badge-{{ supply.id }}" class="status-badge status-{{ supply.status }}">{{ supply.status }}</span>
+                        </td>
+                        <td>
+                            <select onchange="updateStatus('supplies', {{ supply.id }}, this.value)">
+                                <option value="Pending" {% if supply.status == 'Pending' %}selected{% endif %}>Pending</option>
+                                <option value="Matched" {% if supply.status == 'Matched' %}selected{% endif %}>Matched</option>
+                                <option value="Cancelled" {% if supply.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not supplies %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px 0;">No supply listings found.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        function updateStatus(table, id, status) {
+            fetch('/admin/update-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    table: table,
+                    id: id,
+                    status: status
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const badge = document.getElementById(`${table.slice(0, -1)}-badge-${id}`);
+                    badge.className = `status-badge status-${status}`;
+                    badge.innerText = status;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Connection error occurred.');
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GPU-Action: Cut AI GPU Bills by 70% with 0% Downtime Spot-Failover Guard. 100% Local Execution, Zero-Key Storage, 1-line Python daemon.">
+    <meta name="keywords" content="GPU cost optimization, Spot instance failover, AI GPU proxy, Vast.ai failover guard, RunPod backup router, cheap GPU cloud, local execution">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://gpu-action.com/">
+    
+    <!-- Open Graph / LinkedIn -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gpu-action.com/">
+    <meta property="og:title" content="GPU-Action | Zero-Downtime Spot GPU Failover Guard">
+    <meta property="og:description" content="Run LLM & AI Workloads on cheap Spot GPUs with 0% downtime. 100% local execution, zero-key storage, instant 0.05s failover.">
+    <meta property="og:image" content="https://gpu-action.com/static/brand_assets/og_image.png">
+
+    <title>GPU-Action | Zero-Downtime Spot GPU Failover Guard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #030712;
+            --card-bg: rgba(17, 24, 39, 0.85);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --accent-orange: #f97316;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --glow-orange: 0 0 35px rgba(249, 115, 22, 0.25);
+            --glow-cyan: 0 0 35px rgba(6, 182, 212, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 45%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.008) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255, 255, 255, 0.008) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        /* Navigation Header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(3, 7, 18, 0.85);
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            color: var(--accent-orange);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-main);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-orange), #ea580c);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--glow-orange);
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 40px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+            position: relative;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 99px;
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            color: var(--accent-orange);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+        }
+
+        .hero h1 {
+            font-size: 3.4rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 24px;
+            letter-spacing: -1px;
+        }
+
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--accent-orange), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            max-width: 760px;
+            margin: 0 auto 36px;
+            font-weight: 400;
+        }
+
+        /* Code Snippet Box */
+        .code-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px 24px;
+            max-width: 680px;
+            margin: 0 auto 40px;
+            text-align: left;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+            position: relative;
+            font-family: monospace;
+            font-size: 1rem;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #21262d;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .code-content {
+            color: var(--accent-green);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .copy-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 3 Core Pillars */
+        .pillars {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 28px;
+            margin: 60px 0 80px;
+        }
+
+        .pillar-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .pillar-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(249, 115, 22, 0.4);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .pillar-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .pillar-card h3 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .pillar-card p {
+            color: var(--text-muted);
+            font-size: 0.98rem;
+            line-height: 1.6;
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            padding: 60px 0 80px;
+            text-align: center;
+        }
+
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+            max-width: 900px;
+            margin: 40px auto 0;
+        }
+
+        .price-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: left;
+            position: relative;
+            transition: transform 0.3s;
+        }
+
+        .price-card.popular {
+            border-color: var(--accent-orange);
+            box-shadow: var(--glow-orange);
+        }
+
+        .price-card h4 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .price-card .price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: white;
+            margin: 16px 0;
+        }
+
+        .price-card .price span {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .price-features {
+            list-style: none;
+            margin: 24px 0 32px;
+        }
+
+        .price-features li {
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+        }
+
+        .price-features i {
+            color: var(--accent-green);
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--card-border);
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Modal Form */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-card {
+            background: #111827;
+            border: 1px solid var(--accent-orange);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            box-shadow: var(--glow-orange);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px; right: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.4rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 8px;
+            background: #030712;
+            border: 1px solid var(--card-border);
+            color: white;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-orange);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="container nav-content">
+            <a href="/" class="logo">
+                <i class="fa-solid fa-bolt-lightning" style="color: var(--accent-orange);"></i>
+                GPU<span>-ACTION</span>
+            </a>
+            <div class="nav-links">
+                <a href="#pillars">Core Pillars</a>
+                <a href="#security">Security Assurance</a>
+                <a href="#pricing">Pricing</a>
+                <button class="btn-primary" onclick="openTrialModal()">14-Day Free Trial</button>
+                <button class="btn-primary" style="background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff;" onclick="openLoginModal()"><i class="fa-solid fa-terminal" style="color: var(--accent-orange);"></i> Console</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="badge">
+                <i class="fa-solid fa-shield-halved"></i> 100% Local Execution • Zero-Key Storage • PyPI Verified
+            </div>
+            <h1>Cut AI GPU Costs by 70% with<br><span class="highlight">0% Downtime Spot-Failover Guard</span></h1>
+            <p>Run your LLM, Stable Diffusion & PyTorch workloads on cheap Spot GPUs (Vast.ai, RunPod, AWS Spot). Our 100% local daemon detects evictions in 0.05s and reroutes seamlessly without dropping connections or exposing API keys.</p>
+
+            <!-- Code snippet -->
+            <div class="code-box">
+                <div class="code-header">
+                    <span><i class="fa-brands fa-docker"></i> GitHub Container Registry (GHCR) Image</span>
+                    <span><i class="fa-solid fa-cloud-arrow-up"></i> One-Click Marketplace Ready</span>
+                </div>
+                <div class="code-content">
+                    <code>ghcr.io/choi5844/gpu-action:pytorch2.1</code>
+                    <button class="copy-btn" onclick="copyDockerImage()">Copy Image</button>
+                </div>
+            </div>
+
+            <!-- Trust Badges -->
+            <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-top: -20px; margin-bottom: 30px;">
+                <span style="font-size: 0.85rem; color: var(--accent-green); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 12px; border-radius: 6px;">
+                    <i class="fa-solid fa-circle-check"></i> Non-Root / Zero Sudo Required
+                </span>
+                <span style="font-size: 0.85rem; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); padding: 4px 12px; border-radius: 6px;">
+                    <i class="fa-solid fa-lock"></i> AES-256 Encrypted License Token
+                </span>
+                <span style="font-size: 0.85rem; color: var(--accent-purple); background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 4px 12px; border-radius: 6px;">
+                    <i class="fa-brands fa-python"></i> Python 3.8+ Native Package
+                </span>
+            </div>
+
+            <div>
+                <button class="btn-primary" onclick="openTrialModal()" style="font-size: 1.1rem; padding: 16px 36px;">
+                    Start 14-Day Free Trial <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3 Pillars -->
+    <section id="pillars" class="container">
+        <div class="pillars">
+            <div class="pillar-card">
+                <div class="pillar-icon"><i class="fa-solid fa-shield-virus"></i></div>
+                <h3>0.05s Instant Spot Failover</h3>
+                <p>Detect eviction warnings before Spot instances crash. Automatically launch pre-warmed fallback nodes and seamlessly reroute active inference HTTP requests without dropping state.</p>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-icon"><i class="fa-solid fa-user-lock"></i></div>
+                <h3>100% Local Zero-Key Leakage</h3>
+                <p>Your Vast.ai & RunPod API keys NEVER leave your host machine. The <code>gpu-action</code> daemon executes locally on your server. Only subscription validation is verified centrally.</p>
+            </div>
+            <div class="pillar-card">
+                <div class="pillar-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <h3>Real-Time Live Node Intelligence</h3>
+                <p>Get 24/7 global node health scores. Our central engine benchmarks thousands of Spot GPUs worldwide to route your failovers to the highest-uptime, lowest-latency nodes available.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Assurance Section -->
+    <section id="security" style="background: rgba(17, 24, 39, 0.5); padding: 80px 0; border-y: 1px solid var(--card-border);">
+        <div class="container" style="text-align: center;">
+            <div class="badge" style="background: rgba(6, 182, 212, 0.12); border-color: rgba(6, 182, 212, 0.3); color: var(--accent-cyan);">
+                <i class="fa-solid fa-lock"></i> Security & Audit Verified
+            </div>
+            <h2 style="font-size: 2.2rem; font-weight: 800; margin-bottom: 20px;">Audited Open-Source Security Architecture</h2>
+            <p style="max-width: 700px; margin: 0 auto 40px; color: var(--text-muted);">
+                We believe developers should never trust closed binaries with production server access. All client daemon code is 100% open-source and auditable on GitHub.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 40px; flex-wrap: wrap;">
+                <a href="https://github.com/enplabs/spotwarp" target="_blank" style="text-decoration: none; color: inherit; display: block; background: var(--bg-color); padding: 24px 32px; border-radius: 12px; border: 1px solid var(--card-border); max-width: 320px; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-orange)'" onmouseout="this.style.borderColor='var(--card-border)'">
+                    <i class="fa-brands fa-github" style="font-size: 2rem; color: white; margin-bottom: 12px;"></i>
+                    <h4 style="margin-bottom: 8px;">Open Core Source</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Audit every single line of Python code before running on your infrastructure.</p>
+                </a>
+                <div style="background: var(--bg-color); padding: 24px 32px; border-radius: 12px; border: 1px solid var(--card-border); max-width: 320px;">
+                    <i class="fa-brands fa-docker" style="font-size: 2rem; color: var(--accent-blue); margin-bottom: 12px;"></i>
+                    <h4 style="margin-bottom: 8px;">Docker Sandboxed</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted);">Run inside a 100% isolated Docker container to guarantee zero host system file access.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="pricing-section container">
+        <div class="badge"><i class="fa-solid fa-tag"></i> Transparent Software Pricing</div>
+        <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px;">Select Your Software License Pass</h2>
+        <p style="color: var(--text-muted); margin-top: 8px;">No hardware markups. Pay Vast.ai directly at wholesale cost ($0.40/hr) and subscribe to our Failover Guard.</p>
+
+        <div class="pricing-cards">
+            <div class="price-card popular">
+                <div style="position: absolute; top: -14px; right: 20px; background: var(--accent-orange); color: white; padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Most Popular</div>
+                <h4>Developer Pass</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">For AI startups & independent developers</p>
+                <div class="price">$49 <span>/ month</span></div>
+                <ul class="price-features">
+                    <li><i class="fa-solid fa-check"></i> 100% Local Failover Guard Daemon</li>
+                    <li><i class="fa-solid fa-check"></i> 0.05s Instant Spot Rerouting</li>
+                    <li><i class="fa-solid fa-check"></i> Zero-Key Leakage Security</li>
+                    <li><i class="fa-solid fa-check"></i> Live Node Intelligence Feed</li>
+                    <li><i class="fa-solid fa-check"></i> Up to 8 Concurrent Spot GPUs</li>
+                </ul>
+                <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="openTrialModal()">Start 14-Day Free Trial</button>
+            </div>
+
+            <div class="price-card">
+                <h4>Scale Pass</h4>
+                <p style="color: var(--text-muted); font-size: 0.9rem;">For high-volume production AI clusters</p>
+                <div class="price">$199 <span>/ month</span></div>
+                <ul class="price-features">
+                    <li><i class="fa-solid fa-check"></i> Everything in Developer Pass</li>
+                    <li><i class="fa-solid fa-check"></i> Unlimited Spot GPUs</li>
+                    <li><i class="fa-solid fa-check"></i> Multi-Cloud Failover (Vast + RunPod + AWS)</li>
+                    <li><i class="fa-solid fa-check"></i> Dedicated Slack / Discord Support</li>
+                    <li><i class="fa-solid fa-check"></i> Custom Failover Routing Rules</li>
+                </ul>
+                <button class="btn-primary" style="width: 100%; justify-content: center; background: rgba(255,255,255,0.1);" onclick="openTrialModal()">Start 14-Day Free Trial</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Sub-Navigation -->
+    <div style="border-top: 1px solid var(--card-border); padding: 40px 0 20px; text-align: center; background: rgba(10, 15, 30, 0.6);">
+        <div class="container" style="display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 0.95rem; color: #94a3b8;">
+            <a href="javascript:void(0)" onclick="alert('GPU-Action is an open-core AI infrastructure utility developed by ENPLabs Group.')" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">About</a>
+            <span style="color: #334155;">|</span>
+            <a href="mailto:info@gpu-action.com" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Contact</a>
+            <span style="color: #334155;">|</span>
+            <a href="javascript:void(0)" onclick="alert('Privacy Policy: Zero Telemetry & Zero API Key Retention. Your cloud API keys never leave your host machine.')" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
+            <span style="color: #334155;">|</span>
+            <a href="https://pypi.org/project/spotwarp/" target="_blank" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Insights Hub</a>
+            <span style="color: #334155;">|</span>
+            <a href="https://github.com/enplabs/spotwarp" target="_blank" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Documentation</a>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container" style="padding-top: 15px;">
+            <p>© 2026 GPU-Action (ENPLabs Group). All rights reserved. Zero-Downtime Spot GPU Failover Guard & AI Acceleration Utility.</p>
+        </div>
+    </footer>
+
+    <!-- Trial Request Modal -->
+    <div class="modal-overlay" id="trialModal">
+        <div class="modal-card">
+            <span class="modal-close" onclick="closeTrialModal()">&times;</span>
+            <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;">Start 14-Day Free Trial</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">No credit card required. Receive your Trial License Key instantly.</p>
+            
+            <form id="trialForm" onsubmit="handleTrialSubmit(event)">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="form-control" id="trialName" placeholder="e.g. Alex Rivera" required>
+                </div>
+                <div class="form-group">
+                    <label>Developer Email</label>
+                    <input type="email" class="form-control" id="trialEmail" placeholder="alex@company.ai" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px;">
+                    Activate Free Trial Key <i class="fa-solid fa-bolt"></i>
+                </button>
+            </form>
+            <div id="trialResult" style="margin-top: 16px; display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- Console Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card" style="border-color: var(--accent-cyan); box-shadow: 0 0 35px rgba(6, 182, 212, 0.25);">
+            <span class="modal-close" onclick="closeLoginModal()">&times;</span>
+            <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; font-family: 'Outfit', sans-serif;">Console Login</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">Enter your issued license key to access the live monitoring console.</p>
+            
+            <form action="/dashboard/login" method="POST">
+                <div class="form-group">
+                    <label>License Key</label>
+                    <input type="text" class="form-control" name="license_key" placeholder="gpu_act_sk_... or TRIAL_..." required style="font-family: monospace;">
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; background: linear-gradient(135deg, var(--accent-cyan), #0891b2); box-shadow: 0 0 25px rgba(6, 182, 212, 0.2);">
+                    Enter Dashboard <i class="fa-solid fa-right-to-bracket"></i>
+                </button>
+            </form>
+            <div style="margin-top: 16px; text-align: center;">
+                <a href="javascript:void(0)" onclick="closeLoginModal(); openTrialModal();" style="color: var(--accent-orange); font-size: 0.85rem; text-decoration: none; font-weight: 600;">Request Free Trial License &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyDockerImage() {
+            navigator.clipboard.writeText("ghcr.io/choi5844/gpu-action:pytorch2.1");
+            alert("Docker Image Path copied to clipboard!");
+        }
+
+        function openTrialModal() {
+            document.getElementById('trialModal').style.display = 'flex';
+        }
+
+        function closeTrialModal() {
+            document.getElementById('trialModal').style.display = 'none';
+        }
+
+        function openLoginModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        async function handleTrialSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('trialName').value;
+            const email = document.getElementById('trialEmail').value;
+            const resultDiv = document.getElementById('trialResult');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<p style="color: var(--accent-orange);"><i class="fa-solid fa-spinner fa-spin"></i> Activating Trial License...</p>';
+
+            try {
+                const resp = await fetch('/api/v1/request_trial', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, email})
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-green); padding: 16px; border-radius: 8px; font-size: 0.9rem;">
+                            <p style="color: var(--accent-green); font-weight: 700; margin-bottom: 6px;"><i class="fa-solid fa-circle-check"></i> Trial License Activated!</p>
+                            <p style="margin-bottom: 8px;"><b>License Key:</b> <code>${data.license_key}</code></p>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Run in terminal:</p>
+                            <code style="display:block; background: #000; padding: 8px; border-radius: 4px; color: var(--accent-green); margin-top: 4px; white-space: pre-wrap; text-align: left;">${data.install_command}</code>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${data.message}</p>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = '<p style="color: #ef4444;">Error connecting to server. Please try again.</p>';
+            }
+        }
+
+        window.onload = function() {
+            // Check for error in query parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('error') === 'invalid_license') {
+                alert('Invalid or expired license key. Please check and try again.');
+                openLoginModal();
+            }
+        };
+    </script>
+</body>
+</html>

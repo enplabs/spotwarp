@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU-Action | Documentation Portal</title>
+    <!-- Outfit & Inter Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-deep: #030712;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            
+            --accent-orange: #f97316;
+            --accent-blue: #3b82f6;
+            --accent-emerald: #10b981;
+            --accent-cyan: #06b6d4;
+            
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            
+            --glow-orange: 0 0 30px rgba(249, 115, 22, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(6, 182, 212, 0.04) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(249, 115, 22, 0.04) 0%, transparent 45%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        /* Navbar Header */
+        header {
+            background: rgba(3, 7, 18, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            color: var(--accent-orange);
+        }
+
+        .back-home {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-home:hover {
+            color: #ffffff;
+        }
+
+        /* Layout */
+        .docs-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 40px;
+            margin: 40px 0 80px;
+        }
+
+        @media (max-width: 900px) {
+            .docs-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sidebar Navigation */
+        .docs-sidebar {
+            position: sticky;
+            top: 110px;
+            height: calc(100vh - 150px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .sidebar-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-group-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 4px;
+            padding-left: 8px;
+        }
+
+        .sidebar-link {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.88rem;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-link.active {
+            color: #ffffff;
+            background: rgba(249, 115, 22, 0.1);
+            border-left: 3px solid var(--accent-orange);
+            font-weight: 600;
+            padding-left: 9px;
+        }
+
+        /* Content Pane */
+        .docs-content {
+            max-width: 860px;
+            display: flex;
+            flex-direction: column;
+            gap: 48px;
+        }
+
+        .docs-section {
+            scroll-margin-top: 100px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 40px;
+        }
+
+        .docs-section:last-child {
+            border: none;
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 24px 0 12px;
+        }
+
+        p {
+            color: #cbd5e1;
+            font-size: 0.98rem;
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+
+        ul, ol {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Code Blocks */
+        pre {
+            background: #060813;
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88rem;
+            overflow-x: auto;
+            margin: 16px 0 24px;
+            position: relative;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        code {
+            color: var(--accent-cyan);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9em;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        pre code {
+            color: #f1f5f9;
+            background: none;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        .btn-copy-code {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-muted);
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-copy-code:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        /* Callouts */
+        .callout {
+            background: rgba(59, 130, 246, 0.06);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 0 12px 12px 0;
+            padding: 16px 20px;
+            margin: 20px 0 24px;
+        }
+
+        .callout-title {
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .callout-warning {
+            background: rgba(249, 115, 22, 0.06);
+            border-left-color: var(--accent-orange);
+        }
+
+        .callout-success {
+            background: rgba(16, 185, 129, 0.06);
+            border-left-color: var(--accent-emerald);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <header>
+        <div class="container nav-content">
+            <a href="/" class="logo">
+                <i class="fa-solid fa-bolt-lightning"></i>
+                GPU<span>-ACTION</span>
+            </a>
+            <a href="/" class="back-home">
+                <i class="fa-solid fa-house"></i> Return to Home
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Documentation Layout -->
+        <div class="docs-layout">
+            
+            <!-- Sidebar Navigation -->
+            <aside class="docs-sidebar">
+                <div class="sidebar-group">
+                    <span class="sidebar-group-title">Getting Started</span>
+                    <a href="#intro" class="sidebar-link active">Introduction</a>
+                    <a href="#install" class="sidebar-link">Installation</a>
+                    <a href="#config" class="sidebar-link">Environment Configuration</a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-title">Usage Guide</span>
+                    <a href="#activation" class="sidebar-link">Start Guard Daemon</a>
+                    <a href="#auto-resume" class="sidebar-link">Stateful Auto-Resume</a>
+                    <a href="#dashboard-link" class="sidebar-link">Console Dashboard Sync</a>
+                </div>
+                <div class="sidebar-group">
+                    <span class="sidebar-group-title">FAQs & Support</span>
+                    <a href="#security" class="sidebar-link">Security & Sandbox</a>
+                    <a href="#troubleshooting" class="sidebar-link">Troubleshooting</a>
+                </div>
+            </aside>
+            
+            <!-- Main Content Section -->
+            <main class="docs-content">
+                
+                <!-- 1. Introduction -->
+                <section id="intro" class="docs-section">
+                    <h2>Introduction</h2>
+                    <p>
+                        <strong>GPU-Action (SpotWarp)</strong> is a lightweight, 100% local Python autopilot daemon designed to protect your AI training and inference workloads running on cheap Spot instances (Vast.ai, RunPod, AWS Spot) from sudden evictions, ensuring zero data loss and continuous service uptime.
+                    </p>
+                    <p>
+                        By exploiting Spot pricing, you can save <strong>up to 70% on cloud compute bills</strong>. When an eviction occurs, the GPU-Action daemon detects it in 0.05 seconds, rents a matching alternative host instantly, migrates your workspace files using high-speed incremental rsync, restarts your training scripts, and binds active endpoints without manual intervention.
+                    </p>
+                    
+                    <div class="callout callout-success">
+                        <div class="callout-title"><i class="fa-solid fa-circle-check"></i> Zero-Key Storage Guarantee</div>
+                        <p style="margin: 0; font-size: 0.9rem;">
+                            Your master API credentials (Vast/RunPod keys) and workspace training files remain strictly on your local computer. Rented remote containers never see your private access keys, guaranteeing a true Zero-Trust security model.
+                        </p>
+                    </div>
+                </section>
+                
+                <!-- 2. Installation -->
+                <section id="install" class="docs-section">
+                    <h2>Installation</h2>
+                    <p>
+                        If Python 3.8+ is installed on your local host machine, you can install the official package via Pip in seconds:
+                    </p>
+                    <pre><button class="btn-copy-code" onclick="copyText('pip install spotwarp')">Copy</button><code>pip install spotwarp</code></pre>
+                    
+                    <h3>Windows Rsync Auto-Setup</h3>
+                    <p>
+                        GPU-Action utilizes <code>rsync</code> for high-speed workspace delta backups. If rsync is not natively installed on your Windows machine, the daemon automatically downloads a portable, sandboxed cygwin-rsync binary to <code>~/.gpu_action/bin</code> on its first startup.
+                    </p>
+                </section>
+                
+                <!-- 3. Configuration -->
+                <section id="config" class="docs-section">
+                    <h2>Environment Configuration</h2>
+                    <p>
+                        Before starting the guard, export your cloud provider API credentials locally on your client machine:
+                    </p>
+                    
+                    <h3>macOS / Linux</h3>
+                    <pre><button class="btn-copy-code" onclick="copyText('export VAST_API_KEY=&quot;your_vast_key&quot;\nexport RUNPOD_API_KEY=&quot;your_runpod_key&quot;')">Copy</button><code>export VAST_API_KEY="your_vast_api_key_here"
+export RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
+
+                    <h3>Windows PowerShell</h3>
+                    <pre><button class="btn-copy-code" onclick="copyText('$env:VAST_API_KEY=&quot;your_vast_key&quot;\n$env:RUNPOD_API_KEY=&quot;your_runpod_key&quot;')">Copy</button><code>$env:VAST_API_KEY="your_vast_api_key_here"
+$env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
+                </section>
+                
+                <!-- 4. Activation -->
+                <section id="activation" class="docs-section">
+                    <h2>Start Guard Daemon</h2>
+                    <p>
+                        Start the failover guard by passing your subscription license key:
+                    </p>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --license-key YOUR_LICENSE_KEY')">Copy</button><code>spotwarp start --license-key YOUR_LICENSE_KEY</code></pre>
+                    
+                    <div class="callout">
+                        <div class="callout-title"><i class="fa-solid fa-info"></i> Local Development Bypass</div>
+                        <p style="margin: 0; font-size: 0.9rem;">
+                            For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>DEVELOPMENT_TEST_KEY</code> as the license argument.
+                        </p>
+                    </div>
+                </section>
+                
+                <!-- 5. Stateful Auto-Resume -->
+                <section id="auto-resume" class="docs-section">
+                    <h2>Stateful Auto-Resume</h2>
+                    <p>
+                        You can configure the daemon to automatically resume PyTorch/TensorFlow training scripts on the replacement node pointing to your synced checkpoints:
+                    </p>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --license-key YOUR_LICENSE_KEY --resume-cmd &quot;python /workspace/train.py --resume&quot;')">Copy</button><code>spotwarp start --license-key YOUR_LICENSE_KEY --resume-cmd "python /workspace/train.py --resume"</code></pre>
+                    <p>
+                        When eviction occurs, GPU-Action syncs the final state of your workspace directory, boots the cheapest matching host, restores all cached weights, and executes the <code>--resume-cmd</code> in the background via remote SSH/nohup.
+                    </p>
+                </section>
+                
+                <!-- 6. Console Dashboard Sync -->
+                <section id="dashboard-link" class="docs-section">
+                    <h2>Console Dashboard Sync</h2>
+                    <p>
+                        Once the daemon starts, it registers active telemetry with the central server:
+                    </p>
+                    <ul>
+                        <li>Log in to the <a href="/dashboard" target="_blank" style="color: var(--accent-cyan); font-weight: 600; text-decoration: underline;">Live Console Dashboard</a> using your license key.</li>
+                        <li>Monitor active instances (specs, uptime, SSH ports), cumulative cost savings counter ($ / %), and live daemon status logs in real time.</li>
+                    </ul>
+                </section>
+                
+                <!-- 7. Security -->
+                <section id="security" class="docs-section">
+                    <h2>Security & Sandbox</h2>
+                    <p>
+                        All API calls and status heartbeat transmissions are encrypted in transit via HTTPS using AES-256 tokens.
+                    </p>
+                    <p>
+                        The CLI daemon runs strictly in user space on your local computer. It does not require root/sudo access, and can run inside isolated docker containers, making it completely safe for enterprise production environments.
+                    </p>
+                </section>
+                
+            </main>
+            
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer style="margin-top:auto; padding: 40px 0; border-top: 1px solid var(--border-subtle); text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+        <div class="container">
+            <p>© 2026 GPU-Action. All rights reserved. Zero-Downtime Spot GPU Failover Gateway.</p>
+        </div>
+    </footer>
+
+    <script>
+        function copyText(text) {
+            navigator.clipboard.writeText(text);
+            alert("Code copied to clipboard: " + text);
+        }
+
+        // Handle active menu highlights on scroll
+        const sections = document.querySelectorAll('.docs-section');
+        const navLinks = document.querySelectorAll('.sidebar-link');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= (sectionTop - 150)) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').slice(1) === current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

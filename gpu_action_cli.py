@@ -448,7 +448,7 @@ class GpuActionGuard:
             payload = {
                 "template_hash_id": TEMPLATE_HASH_ID,
                 "disk": 20,
-                "runtype": "jupyter_ssl",
+                "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
                 "label": "spotwarp-failover-replacement"
             }
             rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)

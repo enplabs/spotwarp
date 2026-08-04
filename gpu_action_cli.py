@@ -449,7 +449,13 @@ class GpuActionGuard:
                 "template_hash_id": TEMPLATE_HASH_ID,
                 "disk": 20,
                 "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
-                "label": "spotwarp-failover-replacement"
+                "label": "spotwarp-failover-replacement",
+                # Confirmed via live testing: with this pytorch image, Vast's
+                # ssh_direct runtype alone does not reliably start sshd (a
+                # bare ubuntu image worked fine under the same runtype, so
+                # this image's own entrypoint isn't being fully replaced).
+                # Belt-and-suspenders: explicitly start sshd ourselves.
+                "onstart": "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
             }
             rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
             if rent_r.status_code != 200:

@@ -386,29 +386,39 @@ def create_checkout_session():
     license_key = data.get('license_key', '').strip()
     plan_type = data.get('plan_type', 'Developer Pass ($49/mo)').strip()
 
+    # Allow subscribing directly from the pricing page without going through
+    # the trial flow first — generate a fresh license key server-side if the
+    # caller doesn't already have one. The Stripe webhook already creates a
+    # new license row on first payment if the key doesn't exist yet.
     if not license_key:
-        return jsonify({"success": False, "message": "License key is required."}), 400
+        license_key = f"gpu_act_sk_{os.urandom(12).hex()}"
+
+    is_scale_pass = 'scale' in plan_type.lower() or '199' in plan_type
 
     try:
         base_url = request.host_url.rstrip('/')
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&license_key={license_key}"
-        cancel_url = f"{base_url}/dashboard"
+        cancel_url = f"{base_url}/#pricing"
 
-        if STRIPE_PRICE_ID:
+        if STRIPE_PRICE_ID and not is_scale_pass:
             # Use pre-created recurring Price ID from Stripe dashboard (preferred)
             line_items = [{'price': STRIPE_PRICE_ID, 'quantity': 1}]
             mode = 'subscription'
         else:
             # Fallback: create price on the fly using price_data
+            if is_scale_pass:
+                product_name, unit_amount = 'SpotWarp Scale Pass', 19900  # $199.00
+            else:
+                product_name, unit_amount = 'SpotWarp Developer Pass', 4900  # $49.00
             line_items = [{
                 'price_data': {
                     'currency': 'usd',
                     'recurring': {'interval': 'month'},
                     'product_data': {
-                        'name': 'SpotWarp Developer Pass',
+                        'name': product_name,
                         'description': 'Zero-Downtime Spot GPU Failover Guard & AI Workload Autopilot — Monthly Subscription',
                     },
-                    'unit_amount': 4900,  # $49.00 USD in cents
+                    'unit_amount': unit_amount,
                 },
                 'quantity': 1,
             }]
@@ -424,7 +434,7 @@ def create_checkout_session():
             client_reference_id=license_key,
         )
 
-        return jsonify({'success': True, 'checkout_url': session_obj.url, 'session_id': session_obj.id})
+        return jsonify({'success': True, 'checkout_url': session_obj.url, 'session_id': session_obj.id, 'license_key': license_key})
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -458,6 +468,7 @@ def stripe_webhook():
             (session_data.get('metadata') or {}).get('license_key', '')
         )
         customer_email = session_data.get('customer_details', {}).get('email', '') or session_data.get('customer_email', '')
+        plan_label = (session_data.get('metadata') or {}).get('plan_type') or 'Developer Pass ($49/mo)'
 
         if license_key:
             from datetime import timedelta
@@ -468,12 +479,12 @@ def stripe_webhook():
             if lic:
                 cursor.execute(
                     "UPDATE licenses SET plan = ?, expire_date = ?, status = 'Active' WHERE license_key = ?",
-                    ('Developer Pass ($49/mo)', new_expire, license_key)
+                    (plan_label, new_expire, license_key)
                 )
             else:
                 cursor.execute(
                     "INSERT INTO licenses (license_key, email, plan, expire_date, status) VALUES (?, ?, ?, ?, ?)",
-                    (license_key, customer_email, 'Developer Pass ($49/mo)', new_expire, 'Active')
+                    (license_key, customer_email, plan_label, new_expire, 'Active')
                 )
             conn.commit()
             conn.close()
@@ -482,7 +493,7 @@ def stripe_webhook():
                 f"💳 <b>[SpotWarp: REAL Stripe Payment Received!]</b>\n\n"
                 f"🔑 <b>License Key:</b> <code>{license_key}</code>\n"
                 f"📧 <b>Customer Email:</b> {customer_email}\n"
-                f"📦 <b>Plan:</b> Developer Pass ($49/mo)\n"
+                f"📦 <b>Plan:</b> {plan_label}\n"
                 f"⏱️ <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             )
             send_telegram_alert(alert_msg)

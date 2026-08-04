@@ -547,6 +547,7 @@
                     <li><i class="fa-solid fa-check"></i> Up to 8 Concurrent Spot GPUs</li>
                 </ul>
                 <button class="btn-primary" style="width: 100%; justify-content: center;" onclick="openTrialModal()">Start 14-Day Free Trial</button>
+                <button class="btn-secondary" style="width: 100%; justify-content: center; margin-top: 8px; background: transparent; border: 1px solid var(--card-border);" onclick="subscribeNow('Developer Pass ($49/mo)', this)">Skip trial — Subscribe now</button>
             </div>
 
             <div class="price-card">
@@ -561,6 +562,7 @@
                     <li><i class="fa-solid fa-check"></i> Custom Failover Routing Rules</li>
                 </ul>
                 <button class="btn-primary" style="width: 100%; justify-content: center; background: rgba(255,255,255,0.1);" onclick="openTrialModal()">Start 14-Day Free Trial</button>
+                <button class="btn-secondary" style="width: 100%; justify-content: center; margin-top: 8px; background: transparent; border: 1px solid var(--card-border);" onclick="subscribeNow('Scale Pass ($199/mo)', this)">Skip trial — Subscribe now</button>
             </div>
         </div>
     </section>
@@ -685,6 +687,31 @@
                 }
             } catch (err) {
                 resultDiv.innerHTML = '<p style="color: #ef4444;">Error connecting to server. Please try again.</p>';
+            }
+        }
+
+        async function subscribeNow(planType, btn) {
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Redirecting to checkout...';
+            try {
+                const resp = await fetch('/api/v1/create_checkout_session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({plan_type: planType})
+                });
+                const data = await resp.json();
+                if (data.success && data.checkout_url) {
+                    window.location.href = data.checkout_url;
+                } else {
+                    alert('Could not start checkout: ' + (data.message || 'Unknown error'));
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (err) {
+                alert('Error connecting to server. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
         }
 

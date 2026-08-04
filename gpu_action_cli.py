@@ -33,43 +33,35 @@ CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
 TEMPLATE_HASH_ID = "5d762fad90ee6aa0f8636464e142ad29"
 
-def install_rsync_windows() -> bool:
-    """Downloads and extracts a portable, self-contained rsync binary for Windows."""
-    local_dir = os.path.expanduser("~/.gpu_action/bin")
-    cygwin_dir = os.path.join(local_dir, "cygwin64")
-    rsync_exe_path = os.path.join(cygwin_dir, "rsync.exe")
-    
-    if os.path.exists(rsync_exe_path):
-        if cygwin_dir not in os.environ["PATH"]:
-            os.environ["PATH"] = cygwin_dir + os.path.pathsep + os.environ["PATH"]
-        return True
-        
-    print("\n[SpotWarp Windows Installer] Portable rsync not found. Initializing auto-setup...")
-    os.makedirs(local_dir, exist_ok=True)
-    zip_path = os.path.join(local_dir, "rsync-win.zip")
-    url = "https://github.com/rn7s2/rsync-win/releases/download/v0.1.3/rsync-win.zip"
-    
+def to_rsync_path(path: str) -> str:
+    """Converts a native path to a form safe to pass as a purely-local
+    rsync/scp argument. On Windows, a bare drive letter ('C:\\...') is
+    otherwise parsed as a remote host:path spec, which fails with
+    "source and destination cannot both be remote" even though both
+    sides are actually local."""
+    if sys.platform == 'win32':
+        abspath = os.path.abspath(path).replace("\\", "/")
+        if len(abspath) >= 2 and abspath[1] == ':':
+            return f"/cygdrive/{abspath[0].lower()}{abspath[2:]}"
+        return abspath
+    return path
+
+
+def get_ssh_endpoint(inst: dict):
+    """Prefer a direct public_ipaddr:port connection over Vast's ssh#.vast.ai
+    proxy. Observed in practice: the proxy route can fail at the SSH kex
+    stage ("Connection closed by remote host") even while the instance is
+    healthy and directly reachable on its mapped port 22/tcp."""
     try:
-        import urllib.request
-        import zipfile
-        print(f"[Installer] Downloading portable package from: {url}")
-        urllib.request.urlretrieve(url, zip_path)
-        print("[Installer] Extracting package files...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(local_dir)
-        os.remove(zip_path)
-        
-        if os.path.exists(rsync_exe_path):
-            print(f"[Installer] Setup complete! Portable rsync ready at: {cygwin_dir}")
-            if cygwin_dir not in os.environ["PATH"]:
-                os.environ["PATH"] = cygwin_dir + os.path.pathsep + os.environ["PATH"]
-            return True
-        else:
-            print("[-] Verification failed: rsync.exe not found post-extraction.")
-            return False
-    except Exception as e:
-        print(f"[-] Auto-setup failed: {e}")
-        return False
+        ssh_mapping = (inst.get('ports') or {}).get('22/tcp')
+        public_ip = inst.get('public_ipaddr')
+        if ssh_mapping and public_ip:
+            host_port = ssh_mapping[0].get('HostPort')
+            if host_port:
+                return public_ip, int(host_port)
+    except Exception:
+        pass
+    return inst.get('ssh_host'), inst.get('ssh_port')
 
 class GpuActionGuard:
     def __init__(self, license_key: str, vast_api_key: str = None, runpod_api_key: str = None, resume_cmd: str = None):
@@ -83,11 +75,24 @@ class GpuActionGuard:
         self.backup_threads = {}
         self.stop_events = {}
         
-        # Smart detection of rsync local presence (with Windows auto-setup)
-        self.use_rsync = shutil.which("rsync") is not None
-        if not self.use_rsync and sys.platform == 'win32':
-            if install_rsync_windows():
-                self.use_rsync = shutil.which("rsync") is not None
+        # Smart detection of rsync local presence.
+        #
+        # On Windows this was previously auto-installing a portable cygwin
+        # rsync build (install_rsync_windows()) and trusting it whenever the
+        # binary was present. In practice that build has two distinct real
+        # failure modes when actually exercised against a live remote host:
+        # (1) Windows drive-letter paths ("C:\...") get misparsed as a
+        #     remote host:path spec ("source and destination cannot both be
+        #     remote") unless converted to /cygdrive/... form (see
+        #     to_rsync_path()), and even then —
+        # (2) spawning cygwin's ssh.exe as a grandchild of a non-cygwin
+        #     parent process fails during its own fd setup ("dup() in/out/
+        #     err failed"), closing the connection before any data
+        #     transfers. This isn't something we can reliably patch around
+        #     from here, so Windows now always uses scp (bundled with
+        #     Windows' native OpenSSH client, which has none of these
+        #     issues) instead of attempting rsync at all.
+        self.use_rsync = sys.platform != 'win32' and shutil.which("rsync") is not None
 
     def verify_license(self) -> bool:
         """Verifies active subscription or 14-day trial status with central server."""
@@ -215,7 +220,7 @@ class GpuActionGuard:
                         cmd += [
                             "-e", ssh_opts,
                             f"root@{host}:/workspace/",
-                            local_backup_dir + "/"
+                            to_rsync_path(local_backup_dir) + "/"
                         ]
                     else:
                         cmd = [
@@ -225,7 +230,7 @@ class GpuActionGuard:
                             "-P", str(port),
                             "-r",
                             f"root@{host}:/workspace/.",
-                            local_backup_dir
+                            local_backup_dir  # scp (Win32 OpenSSH) wants a native path, not a cygdrive one
                         ]
 
                     try:
@@ -286,7 +291,7 @@ class GpuActionGuard:
                 "rsync",
                 "-az",
                 "-e", f"ssh -p {new_port} -o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}",
-                old_backup_dir + "/",
+                to_rsync_path(old_backup_dir) + "/",
                 f"root@{new_host}:/workspace/"
             ]
         else:
@@ -297,7 +302,7 @@ class GpuActionGuard:
                 "-o", "UserKnownHostsFile=NUL" if sys.platform == 'win32' else "UserKnownHostsFile=/dev/null",
                 "-P", str(new_port),
                 "-r",
-                os.path.join(old_backup_dir, "."),
+                os.path.join(old_backup_dir, "."),  # scp (Win32 OpenSSH) wants a native path, not a cygdrive one
                 f"root@{new_host}:/workspace/"
             ]
             
@@ -444,7 +449,7 @@ class GpuActionGuard:
                 "template_hash_id": TEMPLATE_HASH_ID,
                 "disk": 20,
                 "runtype": "jupyter_ssl",
-                "label": "gpu-action-failover-replacement"
+                "label": "spotwarp-failover-replacement"
             }
             rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
             if rent_r.status_code != 200:
@@ -453,6 +458,29 @@ class GpuActionGuard:
 
             new_id = rent_r.json().get('new_contract') or rent_r.json().get('id')
             print(f"[+] Successfully rented replacement! New Instance ID: {new_id}")
+
+            # Renting via this API endpoint does NOT auto-attach the
+            # account's SSH key the way renting through the website does —
+            # without this, the replacement boots with no authorized key
+            # and every SSH/rsync/scp attempt fails with "Permission
+            # denied (publickey)", silently defeating the whole point of
+            # failover (nothing to restore data to).
+            try:
+                acct_r = requests.get('https://console.vast.ai/api/v0/users/current/', headers=self.headers, timeout=15)
+                account_ssh_key = acct_r.json().get('ssh_key') if acct_r.status_code == 200 else None
+                if account_ssh_key:
+                    key_r = requests.post(
+                        f"https://console.vast.ai/api/v0/instances/{new_id}/ssh/",
+                        json={"ssh_key": account_ssh_key}, headers=self.headers, timeout=15
+                    )
+                    if key_r.status_code == 200:
+                        print("[+] Attached account SSH key to replacement instance.")
+                    else:
+                        print(f"[!] Failed to attach SSH key to replacement: {key_r.text}")
+                else:
+                    print("[!] No SSH key registered on this Vast.ai account — replacement may be unreachable.")
+            except Exception as e:
+                print(f"[!] Error attaching SSH key to replacement: {e}")
 
             # Wait for replacement to boot
             print("[*] Waiting for replacement instance {} to run...".format(new_id))
@@ -483,8 +511,7 @@ class GpuActionGuard:
                 print("[-] Timeout waiting for replacement to boot.")
                 return
 
-            new_host = replacement_inst.get("ssh_host")
-            new_port = replacement_inst.get("ssh_port")
+            new_host, new_port = get_ssh_endpoint(replacement_inst)
             token = replacement_inst.get("jupyter_token")
             ports_map = replacement_inst.get("ports", {})
             jupyter_port_list = ports_map.get("8080/tcp", [])
@@ -634,8 +661,7 @@ class GpuActionGuard:
         if res.get("status") == "ok":
             for inst in res.get("instances", []):
                 inst_id = inst['id']
-                host = inst.get('ssh_host')
-                port = inst.get('ssh_port')
+                host, port = get_ssh_endpoint(inst)
                 host_id = inst.get('host_id')
                 gpu_name = inst.get('gpu_name', 'Unknown')
                 self.tracked_instances[inst_id] = (host, port, host_id, gpu_name)
@@ -663,8 +689,7 @@ class GpuActionGuard:
                     for inst in current_instances:
                         inst_id = inst['id']
                         if inst_id not in self.tracked_instances and inst.get('actual_status') == 'running':
-                            host = inst.get('ssh_host')
-                            port = inst.get('ssh_port')
+                            host, port = get_ssh_endpoint(inst)
                             gpu_name = inst.get('gpu_name', 'Unknown')
                             self.tracked_instances[inst_id] = (host, port, inst.get('host_id'), gpu_name)
                             print(f"\n[Tracked] Found new active instance: {inst_id} (Host {inst.get('host_id')}, GPU: {gpu_name})")

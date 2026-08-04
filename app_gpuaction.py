@@ -26,8 +26,8 @@ except ImportError:
     print("[Warning] stripe package not installed. Run: pip install stripe")
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "gpu_action_secret_2026")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "gpuaction2026!")
+app.secret_key = os.getenv("SECRET_KEY") or os.urandom(32).hex()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gpu_action.db")
 
 def get_db():
@@ -97,8 +97,8 @@ def init_db():
     conn.close()
 
 def send_telegram_alert(message):
-    token = os.getenv("TELEGRAM_TOKEN", "8973603845:AAFLCOfbwVdLmUuzT7vqdmfVW3xNsrsViPM")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "7514482339")
+    token = os.getenv("TELEGRAM_TOKEN", "")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
     if not token or not chat_id:
         return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -651,7 +651,7 @@ def submit_supply():
 def admin():
     if request.method == 'POST':
         password = request.form.get('password')
-        if password == ADMIN_PASSWORD:
+        if ADMIN_PASSWORD and password == ADMIN_PASSWORD:
             session['admin_logged_in'] = True
             return redirect('/admin')
         else:

@@ -855,4 +855,4 @@ def dashboard_logout():
 if __name__ == '__main__':
     init_db()
     # Port 8087 chosen to prevent conflicts with 8000 (Vity-Signal)
-    app.run(host='0.0.0.0', port=8087, debug=True)
+    app.run(host='0.0.0.0', port=8087, debug=os.getenv("FLASK_DEBUG", "false").lower() == "true")

@@ -5,7 +5,7 @@ set -e
 SERVER_URL=${GPU_ACTION_SERVER_URL:-"https://gpu-action.com"}
 
 echo "============================================="
-echo "   GPU-Action Spot-Guard Bootstrapper v2.0"
+echo "   SpotWarp Spot-Guard Bootstrapper v3.0"
 echo "============================================="
 
 if [ -z "$LICENSE_KEY" ]; then
@@ -27,12 +27,12 @@ else
 
     if [ "$VALID" = "True" ] || [ "$VALID" = "true" ]; then
         echo "✅ License verified successfully: $MESSAGE"
-        echo "⚡ Starting GPU-Action Spot-Guard Daemon..."
-        
+        echo "⚡ Starting SpotWarp Spot-Guard Daemon..."
+
         # Start daemon in background (assumes vast/runpod api keys are set in environment)
-        gpu-action start --license-key "$LICENSE_KEY" > /var/log/gpu-action-guard.log 2>&1 &
+        spotwarp start --license-key "$LICENSE_KEY" > /var/log/spotwarp-guard.log 2>&1 &
         echo "🛡️ Spot-Instance Failover Guard is now running in the background."
-        echo "🛡️ Log file: /var/log/gpu-action-guard.log"
+        echo "🛡️ Log file: /var/log/spotwarp-guard.log"
     else
         echo "❌ License verification failed: $MESSAGE"
         echo "⚠️ Spot-Instance Failover Guard is DISABLED."

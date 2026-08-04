@@ -7,11 +7,11 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install gpu-action client and Jupyter environment from PyPI
-RUN pip install --no-cache-dir gpu-action jupyter notebook
+# Install spotwarp client and Jupyter environment from PyPI
+RUN pip install --no-cache-dir spotwarp jupyter notebook
 
 # Create configuration directory
-RUN mkdir -p /root/.config/gpu-action
+RUN mkdir -p /root/.config/spotwarp
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh

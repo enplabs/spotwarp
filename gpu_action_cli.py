@@ -23,11 +23,18 @@ import threading
 import shutil
 import tempfile
 
-# Standardize terminal encoding to UTF-8 on Windows
+# Standardize terminal encoding to UTF-8 on Windows.
+#
+# write_through=True is required here, not optional: without it this
+# TextIOWrapper block-buffers regardless of -u/PYTHONUNBUFFERED (those only
+# affect the original sys.stdout, not a wrapper we construct ourselves
+# afterward). A user redirecting the daemon to a log file — the normal way
+# to run it unattended — would see nothing written until an ~8KB buffer
+# filled, so a crash or kill before that point loses all diagnostic output.
 if sys.platform == 'win32':
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', write_through=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', write_through=True)
 
 CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
@@ -284,7 +291,25 @@ class GpuActionGuard:
             return True
             
         null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-        
+
+        # A freshly-rented replacement doesn't necessarily have /workspace
+        # yet (depends on the image/template's own init) — live testing hit
+        # this twice: scp/rsync into a missing remote directory fails
+        # immediately ("no such file"), silently skipping the whole
+        # restore. Ensure it exists first.
+        try:
+            subprocess.run(
+                [
+                    "ssh", "-p", str(new_port),
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", f"UserKnownHostsFile={null_file}",
+                    f"root@{new_host}", "mkdir -p /workspace"
+                ],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30
+            )
+        except Exception:
+            pass
+
         if self.use_rsync:
             print(f"[Restore] Migrating cached workspace via high-speed 'rsync' from {old_backup_dir} to {new_host}:{new_port}...")
             cmd = [
@@ -367,21 +392,32 @@ class GpuActionGuard:
         print(f"[*] Finding cheapest alternative matching '{match_token}' on Vast.ai...")
         q = {"rentable": {"eq": True}, "order": [["dph_total", "asc"]], "limit": 200}
 
-        matched_offer = None
+        # Collect every matching offer (cheapest first), not just the single
+        # cheapest one — a dead/unresponsive host on the first pick shouldn't
+        # end the whole failover attempt (see MAX_RENT_ATTEMPTS below).
+        #
+        # "laptop"-suffixed listings (individual gaming laptops rented out,
+        # not dedicated desktop/server cards) were live-testing verified to
+        # be disproportionately unreliable — every dead-on-arrival host hit
+        # during today's testing was a "laptop" listing, while ordinary
+        # (non-laptop) cards of the same model booted every time. They're
+        # usually also not meaningfully cheaper, so excluding them costs
+        # little and removes the biggest observed source of failed replacements.
+        candidate_offers = []
         try:
             r_query = requests.get('https://cloud.vast.ai/api/v0/bundles/', params={'q': json.dumps(q)}, headers=self.headers, timeout=15)
             if r_query.status_code == 200:
                 offers = r_query.json().get('offers', [])
-                for o in offers:
-                    name = o.get('gpu_name', '').lower()
-                    host_id = o.get('host_id')
-                    if match_token in name and host_id != evicted_host_id:
-                        matched_offer = o
-                        break
+                candidate_offers = [
+                    o for o in offers
+                    if match_token in o.get('gpu_name', '').lower()
+                    and 'laptop' not in o.get('gpu_name', '').lower()
+                    and o.get('host_id') != evicted_host_id
+                ]
         except Exception:
             pass
 
-        if not matched_offer:
+        if not candidate_offers:
             print(f"[-] No rentable alternative matching '{match_token}' found on Vast.ai.")
             # FALLBACK TO RUNPOD
             if self.runpod_api_key:
@@ -436,85 +472,121 @@ class GpuActionGuard:
                     print(f"[-] RunPod failover fallback failed: {rp_err}")
             return
 
+        # A single rental attempt isn't reliable enough on its own: live
+        # testing turned up both dead hosts (never boot at all) and slow
+        # cold image pulls that legitimately exceed a 300s wait. Try several
+        # offers in order, giving each a generous boot window, and destroy
+        # (rather than abandon) any that don't come up — an abandoned
+        # instance still matching our "spotwarp" label would otherwise get
+        # silently re-adopted as "healthy" by the normal tracking loop later,
+        # even though nothing was ever restored to it.
+        MAX_RENT_ATTEMPTS = 4
+        BOOT_TIMEOUT_SECONDS = 600
+
+        new_id = None
+        replacement_inst = None
+
         try:
-            offer_id = matched_offer['id']
-            gpu_name = matched_offer['gpu_name']
-            price = matched_offer['dph_total']
-            print(f"[+] Found Alternative Offer {offer_id}: {gpu_name} at ${price:.3f}/hr on Host {matched_offer.get('host_id')}")
+            for attempt_num, offer in enumerate(candidate_offers[:MAX_RENT_ATTEMPTS], start=1):
+                offer_id = offer['id']
+                gpu_name = offer['gpu_name']
+                price = offer['dph_total']
+                print(f"[+] Attempt {attempt_num}/{MAX_RENT_ATTEMPTS}: Offer {offer_id}: {gpu_name} at ${price:.3f}/hr on Host {offer.get('host_id')}")
 
-            # Rent the replacement on Vast.ai
-            print(f"[*] Renting replacement GPU instance (Offer: {offer_id})...")
-            rent_url = f"https://console.vast.ai/api/v0/asks/{offer_id}/"
-            payload = {
-                "template_hash_id": TEMPLATE_HASH_ID,
-                "disk": 20,
-                "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
-                "label": "spotwarp-failover-replacement",
-                # Confirmed via live testing: with this pytorch image, Vast's
-                # ssh_direct runtype alone does not reliably start sshd (a
-                # bare ubuntu image worked fine under the same runtype, so
-                # this image's own entrypoint isn't being fully replaced).
-                # Belt-and-suspenders: explicitly start sshd ourselves.
-                "onstart": "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
-            }
-            rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
-            if rent_r.status_code != 200:
-                print(f"[-] Replacement rental failed: {rent_r.text}")
-                return
+                print(f"[*] Renting replacement GPU instance (Offer: {offer_id})...")
+                rent_url = f"https://console.vast.ai/api/v0/asks/{offer_id}/"
+                payload = {
+                    "template_hash_id": TEMPLATE_HASH_ID,
+                    "disk": 20,
+                    "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
+                    "label": "spotwarp-failover-replacement",
+                    # Confirmed via live testing: with this pytorch image, Vast's
+                    # ssh_direct runtype alone does not reliably start sshd (a
+                    # bare ubuntu image worked fine under the same runtype, so
+                    # this image's own entrypoint isn't being fully replaced).
+                    # Belt-and-suspenders: explicitly start sshd ourselves.
+                    "onstart": "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
+                }
+                rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
+                if rent_r.status_code != 200:
+                    print(f"[-] Replacement rental failed: {rent_r.text}")
+                    continue
 
-            new_id = rent_r.json().get('new_contract') or rent_r.json().get('id')
-            print(f"[+] Successfully rented replacement! New Instance ID: {new_id}")
+                attempt_id = rent_r.json().get('new_contract') or rent_r.json().get('id')
+                print(f"[+] Successfully rented replacement! New Instance ID: {attempt_id}")
 
-            # Renting via this API endpoint does NOT auto-attach the
-            # account's SSH key the way renting through the website does —
-            # without this, the replacement boots with no authorized key
-            # and every SSH/rsync/scp attempt fails with "Permission
-            # denied (publickey)", silently defeating the whole point of
-            # failover (nothing to restore data to).
-            try:
-                acct_r = requests.get('https://console.vast.ai/api/v0/users/current/', headers=self.headers, timeout=15)
-                account_ssh_key = acct_r.json().get('ssh_key') if acct_r.status_code == 200 else None
-                if account_ssh_key:
-                    key_r = requests.post(
-                        f"https://console.vast.ai/api/v0/instances/{new_id}/ssh/",
-                        json={"ssh_key": account_ssh_key}, headers=self.headers, timeout=15
-                    )
-                    if key_r.status_code == 200:
-                        print("[+] Attached account SSH key to replacement instance.")
+                # Renting via this API endpoint does NOT auto-attach the
+                # account's SSH key the way renting through the website does —
+                # without this, the replacement boots with no authorized key
+                # and every SSH/rsync/scp attempt fails with "Permission
+                # denied (publickey)", silently defeating the whole point of
+                # failover (nothing to restore data to).
+                try:
+                    acct_r = requests.get('https://console.vast.ai/api/v0/users/current/', headers=self.headers, timeout=15)
+                    account_ssh_key = acct_r.json().get('ssh_key') if acct_r.status_code == 200 else None
+                    if account_ssh_key:
+                        key_r = requests.post(
+                            f"https://console.vast.ai/api/v0/instances/{attempt_id}/ssh/",
+                            json={"ssh_key": account_ssh_key}, headers=self.headers, timeout=15
+                        )
+                        if key_r.status_code == 200:
+                            print("[+] Attached account SSH key to replacement instance.")
+                        else:
+                            print(f"[!] Failed to attach SSH key to replacement: {key_r.text}")
                     else:
-                        print(f"[!] Failed to attach SSH key to replacement: {key_r.text}")
-                else:
-                    print("[!] No SSH key registered on this Vast.ai account — replacement may be unreachable.")
-            except Exception as e:
-                print(f"[!] Error attaching SSH key to replacement: {e}")
+                        print("[!] No SSH key registered on this Vast.ai account — replacement may be unreachable.")
+                except Exception as e:
+                    print(f"[!] Error attaching SSH key to replacement: {e}")
 
-            # Wait for replacement to boot
-            print("[*] Waiting for replacement instance {} to run...".format(new_id))
-            start_time = time.time()
-            replacement_running = False
-            replacement_inst = None
+                # Wait for replacement to boot
+                print(f"[*] Waiting for replacement instance {attempt_id} to run (up to {BOOT_TIMEOUT_SECONDS}s)...")
+                attempt_start = time.time()
+                attempt_running = False
+                attempt_inst = None
 
-            while time.time() - start_time < 300:
-                time.sleep(15)
-                r_check = requests.get('https://console.vast.ai/api/v1/instances/', headers=self.headers, timeout=15)
-                if r_check.status_code == 200:
-                    instances = r_check.json().get('instances', [])
-                    replacement_inst = next((i for i in instances if i['id'] == new_id), None)
-                    if replacement_inst:
-                        status = replacement_inst.get('actual_status')
-                        cur_state = replacement_inst.get('cur_state')
-                        status_msg = replacement_inst.get('status_msg') or ""
-                        print(f"  - Status: {status} ({cur_state}) - Msg: {status_msg[:80]}")
-                        if status == "running" and cur_state == "running" and "jupyter" in status_msg.lower():
-                            replacement_running = True
-                            break
+                while time.time() - attempt_start < BOOT_TIMEOUT_SECONDS:
+                    time.sleep(15)
+                    r_check = requests.get('https://console.vast.ai/api/v1/instances/', headers=self.headers, timeout=15)
+                    if r_check.status_code == 200:
+                        instances = r_check.json().get('instances', [])
+                        attempt_inst = next((i for i in instances if i['id'] == attempt_id), None)
+                        if attempt_inst:
+                            status = attempt_inst.get('actual_status')
+                            cur_state = attempt_inst.get('cur_state')
+                            status_msg = attempt_inst.get('status_msg') or ""
+                            print(f"  - Status: {status} ({cur_state}) - Msg: {status_msg[:80]}")
+                            # Requiring the literal word "jupyter" in status_msg
+                            # was live-testing verified to be wrong: current
+                            # Vast images report e.g. "success, running
+                            # vastai/pytorch_cuda-13.2.1-auto/ssh" with no
+                            # "jupyter" substring at all, even once fully
+                            # booted and SSH-reachable — so this condition
+                            # never fired and the daemon destroyed perfectly
+                            # healthy replacements after waiting out the full
+                            # timeout. What we actually need (we connect over
+                            # SSH, not Jupyter) is the SSH port mapping.
+                            ssh_ready = bool((attempt_inst.get('ports') or {}).get('22/tcp'))
+                            if status == "running" and cur_state == "running" and ssh_ready:
+                                attempt_running = True
+                                break
+                        else:
+                            print("  - Instance not listed yet...")
                     else:
-                        print("  - Instance not listed yet...")
-                else:
-                    print(f"  - Status check error: {r_check.status_code}")
+                        print(f"  - Status check error: {r_check.status_code}")
 
-            if not replacement_running:
-                print("[-] Timeout waiting for replacement to boot.")
+                if attempt_running:
+                    new_id = attempt_id
+                    replacement_inst = attempt_inst
+                    break
+
+                print(f"[-] Attempt {attempt_num} timed out waiting for instance {attempt_id} to boot — destroying it and trying the next offer.")
+                try:
+                    requests.delete(f"https://console.vast.ai/api/v0/instances/{attempt_id}/", headers=self.headers, timeout=15)
+                except Exception:
+                    pass
+
+            if not new_id:
+                print(f"[🔥 FAILOVER FAILED] Exhausted {min(len(candidate_offers), MAX_RENT_ATTEMPTS)} rental attempts — no replacement could be brought up for evicted instance {evicted_id}. Your workload is NOT currently protected. Manual intervention needed.")
                 return
 
             new_host, new_port = get_ssh_endpoint(replacement_inst)

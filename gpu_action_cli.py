@@ -25,16 +25,18 @@ import tempfile
 
 # Standardize terminal encoding to UTF-8 on Windows.
 #
-# write_through=True is required here, not optional: without it this
-# TextIOWrapper block-buffers regardless of -u/PYTHONUNBUFFERED (those only
-# affect the original sys.stdout, not a wrapper we construct ourselves
-# afterward). A user redirecting the daemon to a log file — the normal way
-# to run it unattended — would see nothing written until an ~8KB buffer
-# filled, so a crash or kill before that point loses all diagnostic output.
+# write_through=True alone is NOT enough (live-testing verified 2026-08-06):
+# it only stops the TextIOWrapper's own text-layer buffering. Wrapping the
+# existing sys.stdout.buffer still leaves that underlying BufferedWriter's
+# binary-layer buffering in place, so output silently sat unflushed for
+# minutes at a time when redirected to a file — a background daemon that
+# was working fine looked hung. Opening the raw fd directly with
+# buffering=0 removes the buffered layer entirely, confirmed live to flush
+# each line immediately even mid-sleep in a still-running process.
 if sys.platform == 'win32':
     import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', write_through=True)
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', write_through=True)
+    sys.stdout = io.TextIOWrapper(open(sys.stdout.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
+    sys.stderr = io.TextIOWrapper(open(sys.stderr.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
 
 CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
@@ -390,7 +392,17 @@ class GpuActionGuard:
             print(f"[!] Evicted GPU type unknown — defaulting search to RTX 3090 as a safe budget fallback.")
 
         print(f"[*] Finding cheapest alternative matching '{match_token}' on Vast.ai...")
-        q = {"rentable": {"eq": True}, "order": [["dph_total", "asc"]], "limit": 200}
+        # limit=200 (previous value) silently broke failover for any GPU tier
+        # pricier than mid-range: live-testing found the query returns the
+        # N globally cheapest offers across ALL models before our own
+        # gpu_name filtering runs, and premium tiers (H100 etc.) don't crack
+        # the top 200 cheapest listings on the entire marketplace — every
+        # single one got filtered out, so a customer training on an H100 got
+        # "no rentable alternative found" on every real eviction, 100% of
+        # the time. The whole marketplace is ~2,500 listings; 5000 comfortably
+        # covers it without needing a per-GPU-model exact-name whitelist that
+        # would need updating every time Vast adds a new card.
+        q = {"rentable": {"eq": True}, "order": [["dph_total", "asc"]], "limit": 5000}
 
         # Collect every matching offer (cheapest first), not just the single
         # cheapest one — a dead/unresponsive host on the first pick shouldn't
@@ -505,7 +517,25 @@ class GpuActionGuard:
                     # bare ubuntu image worked fine under the same runtype, so
                     # this image's own entrypoint isn't being fully replaced).
                     # Belt-and-suspenders: explicitly start sshd ourselves.
-                    "onstart": "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
+                    #
+                    # Second bug found live-testing A100/H100 tiers specifically
+                    # (2026-08-06, not present on the RTX 3060/3090 tiers tested
+                    # earlier): on these hosts' Ubuntu 24.04 base image, Vast's
+                    # own key-injection writes /root/.ssh/authorized_keys with
+                    # permissions sshd's StrictModes rejects ("bad ownership or
+                    # modes"), even though the key content itself is correct —
+                    # every connection attempt failed "Permission denied
+                    # (publickey)" despite the right key being present. Loop-wait
+                    # for the file to appear (Vast's injection is asynchronous
+                    # relative to our onstart), then fix its permissions.
+                    "onstart": (
+                        "for i in $(seq 1 60); do "
+                        "if [ -f /root/.ssh/authorized_keys ]; then "
+                        "chmod 700 /root/.ssh; chmod 600 /root/.ssh/authorized_keys; "
+                        "chown root:root /root/.ssh /root/.ssh/authorized_keys; "
+                        "break; fi; sleep 2; done; "
+                        "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
+                    )
                 }
                 rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
                 if rent_r.status_code != 200:

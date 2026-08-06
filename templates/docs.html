@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPU-Action | Documentation Portal</title>
+    <title>SpotWarp | Documentation Portal</title>
     <!-- Outfit & Inter Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
@@ -348,10 +348,10 @@
                 <section id="intro" class="docs-section">
                     <h2>Introduction</h2>
                     <p>
-                        <strong>GPU-Action (SpotWarp)</strong> is a lightweight, 100% local Python autopilot daemon designed to protect your AI training and inference workloads running on cheap Spot instances (Vast.ai, RunPod, AWS Spot) from sudden evictions, ensuring zero data loss and continuous service uptime.
+                        <strong>SpotWarp</strong> is a lightweight, 100% local Python autopilot daemon designed to protect your AI training and inference workloads running on cheap Spot instances (Vast.ai, RunPod, AWS Spot) from sudden evictions, ensuring zero data loss and continuous service uptime.
                     </p>
                     <p>
-                        By exploiting Spot pricing, you can save <strong>up to 70% on cloud compute bills</strong>. When an eviction warning fires, the SpotWarp daemon rents a matching alternative host, migrates your workspace files using high-speed incremental rsync, restarts your training scripts, and binds active endpoints — automatically, without manual intervention.
+                        By exploiting Spot pricing, you can save <strong>up to 70% on cloud compute bills</strong>. When an eviction warning fires, the SpotWarp daemon rents a matching alternative host, migrates your workspace files (via <code>scp</code> on Windows, or <code>rsync</code> where natively available), restarts your training scripts, and binds active endpoints — automatically, without manual intervention.
                     </p>
                     
                     <div class="callout callout-success">
@@ -370,9 +370,9 @@
                     </p>
                     <pre><button class="btn-copy-code" onclick="copyText('pip install spotwarp')">Copy</button><code>pip install spotwarp</code></pre>
                     
-                    <h3>Windows Rsync Auto-Setup</h3>
+                    <h3>Windows Backup Transport</h3>
                     <p>
-                        GPU-Action utilizes <code>rsync</code> for high-speed workspace delta backups. If rsync is not natively installed on your Windows machine, the daemon automatically downloads a portable, sandboxed cygwin-rsync binary to <code>~/.gpu_action/bin</code> on its first startup.
+                        SpotWarp uses <code>rsync</code> for high-speed incremental workspace backups when it's natively available (Linux/macOS). On Windows, it automatically uses <code>scp</code> (bundled with Windows' native OpenSSH client) instead — no extra setup or download required on first startup.
                     </p>
                 </section>
                 
@@ -403,7 +403,7 @@ $env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
                     <div class="callout">
                         <div class="callout-title"><i class="fa-solid fa-info"></i> Local Development Bypass</div>
                         <p style="margin: 0; font-size: 0.9rem;">
-                            For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>DEVELOPMENT_TEST_KEY</code> as the license argument.
+                            For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>TRIAL_LOCAL_PASS</code> as the license argument (or simply omitting <code>--license-key</code>, which defaults to it).
                         </p>
                     </div>
                 </section>
@@ -416,7 +416,7 @@ $env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
                     </p>
                     <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --license-key YOUR_LICENSE_KEY --resume-cmd &quot;python /workspace/train.py --resume&quot;')">Copy</button><code>spotwarp start --license-key YOUR_LICENSE_KEY --resume-cmd "python /workspace/train.py --resume"</code></pre>
                     <p>
-                        When eviction occurs, GPU-Action syncs the final state of your workspace directory, boots the cheapest matching host, restores all cached weights, and executes the <code>--resume-cmd</code> in the background via remote SSH/nohup.
+                        When eviction occurs, SpotWarp syncs the final state of your workspace directory, boots the cheapest matching host, restores all cached weights, and executes the <code>--resume-cmd</code> in the background via remote SSH/nohup.
                     </p>
                 </section>
                 
@@ -451,7 +451,7 @@ $env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
     <!-- Footer -->
     <footer style="margin-top:auto; padding: 40px 0; border-top: 1px solid var(--border-subtle); text-align: center; color: var(--text-muted); font-size: 0.9rem;">
         <div class="container">
-            <p>© 2026 GPU-Action. All rights reserved. Zero-Downtime Spot GPU Failover Gateway.</p>
+            <p>© 2026 SpotWarp. All rights reserved. Zero-Downtime Spot GPU Failover Gateway.</p>
         </div>
     </footer>
 

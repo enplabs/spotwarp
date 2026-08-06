@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="GPU-Action: Cut AI GPU Bills by 70% with 0% Downtime Spot-Failover Guard. 100% Local Execution, Zero-Key Storage, 1-line Python daemon.">
+    <meta name="description" content="SpotWarp: Cut AI GPU Bills by 70% with 0% Downtime Spot-Failover Guard. 100% Local Execution, Zero-Key Storage, 1-line Python daemon.">
     <meta name="keywords" content="GPU cost optimization, Spot instance failover, AI GPU proxy, Vast.ai failover guard, RunPod backup router, cheap GPU cloud, local execution">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://gpu-action.com/">
-    
+
     <!-- Open Graph / LinkedIn -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://gpu-action.com/">
-    <meta property="og:title" content="GPU-Action | Zero-Downtime Spot GPU Failover Guard">
+    <meta property="og:title" content="SpotWarp | Zero-Downtime Spot GPU Failover Guard">
     <meta property="og:description" content="Run LLM & AI Workloads on cheap Spot GPUs with 0% downtime. 100% local execution, zero-key storage, automatic eviction failover.">
     <meta property="og:image" content="https://gpu-action.com/static/brand_assets/og_image.png">
 
-    <title>GPU-Action | Zero-Downtime Spot GPU Failover Guard</title>
+    <title>SpotWarp | Zero-Downtime Spot GPU Failover Guard</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome icons -->
@@ -427,7 +427,7 @@
         <div class="container nav-content">
             <a href="/" class="logo">
                 <i class="fa-solid fa-bolt-lightning" style="color: var(--accent-orange);"></i>
-                GPU<span>-ACTION</span>
+                Spot<span>Warp</span>
             </a>
             <div class="nav-links">
                 <a href="#pillars">Core Pillars</a>
@@ -455,7 +455,7 @@
                     <span><i class="fa-solid fa-cloud-arrow-up"></i> One-Click Marketplace Ready</span>
                 </div>
                 <div class="code-content">
-                    <code>ghcr.io/choi5844/gpu-action:pytorch2.1</code>
+                    <code>ghcr.io/enplabs/spotwarp:pytorch2.1</code>
                     <button class="copy-btn" onclick="copyDockerImage()">Copy Image</button>
                 </div>
             </div>
@@ -492,7 +492,7 @@
             <div class="pillar-card">
                 <div class="pillar-icon"><i class="fa-solid fa-user-lock"></i></div>
                 <h3>100% Local Zero-Key Leakage</h3>
-                <p>Your Vast.ai & RunPod API keys NEVER leave your host machine. The <code>gpu-action</code> daemon executes locally on your server. Only subscription validation is verified centrally.</p>
+                <p>Your Vast.ai & RunPod API keys NEVER leave your host machine. The <code>spotwarp</code> daemon executes locally on your server. Only subscription validation is verified centrally.</p>
             </div>
             <div class="pillar-card">
                 <div class="pillar-icon"><i class="fa-solid fa-chart-line"></i></div>
@@ -570,7 +570,7 @@
     <!-- Footer Sub-Navigation -->
     <div style="border-top: 1px solid var(--card-border); padding: 40px 0 20px; text-align: center; background: rgba(10, 15, 30, 0.6);">
         <div class="container" style="display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 0.95rem; color: #94a3b8;">
-            <a href="javascript:void(0)" onclick="alert('GPU-Action is an open-core AI infrastructure utility developed by ENPLabs Group.')" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">About</a>
+            <a href="javascript:void(0)" onclick="alert('SpotWarp is an open-core AI infrastructure utility developed by ENPLabs Group.')" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">About</a>
             <span style="color: #334155;">|</span>
             <a href="mailto:info@gpu-action.com" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Contact</a>
             <span style="color: #334155;">|</span>
@@ -585,7 +585,7 @@
     <!-- Footer -->
     <footer>
         <div class="container" style="padding-top: 15px;">
-            <p>© 2026 GPU-Action (ENPLabs Group). All rights reserved. Zero-Downtime Spot GPU Failover Guard & AI Acceleration Utility.</p>
+            <p>© 2026 SpotWarp (ENPLabs Group). All rights reserved. Zero-Downtime Spot GPU Failover Guard & AI Acceleration Utility.</p>
         </div>
     </footer>
 
@@ -637,7 +637,7 @@
 
     <script>
         function copyDockerImage() {
-            navigator.clipboard.writeText("ghcr.io/choi5844/gpu-action:pytorch2.1");
+            navigator.clipboard.writeText("ghcr.io/enplabs/spotwarp:pytorch2.1");
             alert("Docker Image Path copied to clipboard!");
         }
 

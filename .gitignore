@@ -53,7 +53,6 @@ project_100k_path.py
 project_1m_path.py
 remote_check_balances.py
 runpod_connector.py
-setup.py
 shuffle_test.py
 shuffle_test_v5.py
 simulate_100k.py

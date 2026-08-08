@@ -859,7 +859,7 @@ class GpuActionGuard:
         print("==================================================")
         
         if not self.verify_license():
-            print("❌ Invalid license. Please subscribe or start a 14-day trial at https://spotwarp.com")
+            print("❌ Invalid license. Please subscribe or start a 14-day trial at https://gpu-action.com")
             sys.exit(1)
 
         print("[SpotWarp Guard] Failover Guard is now ACTIVE. Monitoring Spot instances...")

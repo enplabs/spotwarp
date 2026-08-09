@@ -698,7 +698,7 @@
                         </div>
                         <div class="info-item">
                             <span class="info-label">License Plan</span>
-                            <span class="info-value" style="color: var(--accent-emerald);">{{ license.plan or 'Developer Pass ($49/mo)' }}</span>
+                            <span class="info-value" style="color: var(--accent-emerald);">{{ license.plan or 'SpotWarp Pass ($49/mo)' }}</span>
                         </div>
                     </div>
                 </div>
@@ -710,10 +710,10 @@
                         <i class="fa-solid fa-crown"></i> Upgrade to Premium Plan
                     </h3>
                     <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
-                        Your trial will expire soon. Click below to simulate Stripe checkout and upgrade your license to a permanent Developer Pass.
+                        Your trial will expire soon. Click below to simulate Stripe checkout and upgrade your license to a permanent SpotWarp Pass.
                     </p>
-                    <button id="btn-upgrade-sandbox" onclick="simulateStripeCheckout('Developer Pass ($49/mo)')" class="btn-action-block btn-action-primary" style="width: 100%; font-size: 0.78rem; padding: 10px;">
-                        <i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)
+                    <button id="btn-upgrade-sandbox" onclick="simulateStripeCheckout('SpotWarp Pass ($49/mo)')" class="btn-action-block btn-action-primary" style="width: 100%; font-size: 0.78rem; padding: 10px;">
+                        <i class="fa-solid fa-credit-card"></i> Buy SpotWarp Pass ($49/mo)
                     </button>
                 </div>
                 {% endif %}
@@ -823,11 +823,11 @@
                     window.location.href = data.checkout_url;
                 } else {
                     alert("Could not initiate checkout: " + (data.message || "Unknown error"));
-                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy SpotWarp Pass ($49/mo)'; }
                 }
             } catch (err) {
                 alert("Error connecting to server. Please try again.");
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy SpotWarp Pass ($49/mo)'; }
             }
         }
 

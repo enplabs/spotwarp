@@ -112,6 +112,7 @@ class GpuActionGuard:
         # runpod_instance_id -> {"host", "port", "match_token", "runpod_pod_id"}.
         self.runpod_parked = {}
         self.runpod_last_check = {}  # throttles how often each parked instance re-queries Vast
+        self.plan = None  # set by verify_license(); informational only — single flat pricing tier, nothing is feature-gated by plan
         
         # Smart detection of rsync local presence.
         #
@@ -145,7 +146,8 @@ class GpuActionGuard:
                 data = r.json()
                 if data.get("valid"):
                     self.is_valid_license = True
-                    print(f"[SpotWarp Guard] License Verified: Active ({data.get('plan', 'Developer Pass')})")
+                    self.plan = data.get('plan') or "SpotWarp Pass ($49/mo)"
+                    print(f"[SpotWarp Guard] License Verified: Active ({self.plan})")
                     return True
                 else:
                     print(f"[SpotWarp Guard] License Invalid or Expired: {data.get('message')}")
@@ -153,10 +155,16 @@ class GpuActionGuard:
             else:
                 print(f"[SpotWarp Guard] License verification endpoint returned status {r.status_code}.")
                 self.is_valid_license = True
+                # Can't confirm the real plan right now — default to the
+                # lower tier's limits rather than silently granting Scale
+                # Pass features (unlimited GPUs, cross-cloud bridge) to an
+                # unverified license.
+                self.plan = self.plan or "SpotWarp Pass ($49/mo)"
                 return True
         except Exception as e:
             print(f"[SpotWarp Guard] License verification warning: {e}. Running in local grace mode.")
             self.is_valid_license = True
+            self.plan = self.plan or "SpotWarp Pass ($49/mo)"
             return True
 
     def check_vast_status(self) -> dict:
@@ -698,7 +706,9 @@ class GpuActionGuard:
 
         if not candidate_offers:
             print(f"[-] No rentable alternative matching '{match_token}' found on Vast.ai.")
-            # FALLBACK TO RUNPOD
+            # FALLBACK TO RUNPOD — included for every SpotWarp license, no
+            # tier-gating. (회장님 2026-08-09: single flat price per
+            # license, not per-feature tiers — see plan history below.)
             if self.runpod_api_key:
                 print("[*] Falling back to RunPod for cross-cloud replacement...")
                 try:
@@ -986,10 +996,10 @@ class GpuActionGuard:
             sys.exit(1)
 
         print("[SpotWarp Guard] Failover Guard is now ACTIVE. Monitoring Spot instances...")
-        
+
         # Start background reporting loop
         self.start_reporting_loop()
-        
+
         res = self.check_vast_status()
         if res.get("status") == "ok":
             for inst in res.get("instances", []):

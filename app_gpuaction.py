@@ -244,10 +244,17 @@ def verify_license():
                 expire_date = datetime.now()
                 
         if datetime.now() < expire_date:
+            # Previously guessed the plan from the license key's prefix
+            # instead of reading the real `plan` column — every paid key
+            # (both Developer and Scale Pass) uses the same "gpu_act_sk_"
+            # prefix, so a Scale Pass customer's own daemon would report
+            # itself as Developer Pass. The `plan` column is the real
+            # source of truth (set by the Stripe webhook at checkout).
+            plan = lic['plan'] if lic['plan'] else "14-Day Free Trial"
             return jsonify({
                 "valid": True,
                 "license_key": license_key,
-                "plan": "Developer Pass ($49/mo)" if license_key.startswith("gpu_act_sk_") else "14-Day Free Trial",
+                "plan": plan,
                 "status": "active",
                 "message": "License verified. Spot-Failover Guard Active."
             })
@@ -338,7 +345,7 @@ def simulate_upgrade():
         return jsonify({"success": False, "message": "Unauthorized"}), 403
 
     license_key = data.get('license_key', '').strip()
-    plan_type = data.get('plan_type', 'Developer Pass ($49/mo)').strip()
+    plan_type = data.get('plan_type', 'SpotWarp Pass ($49/mo)').strip()
 
     if not license_key:
         return jsonify({"success": False, "message": "License key is required"}), 400
@@ -397,7 +404,15 @@ def create_checkout_session():
 
     data = request.get_json(silent=True) or request.form or {}
     license_key = data.get('license_key', '').strip()
-    plan_type = data.get('plan_type', 'Developer Pass ($49/mo)').strip()
+    # 회장님 2026-08-09: collapsed from Developer/Scale tiers to a single
+    # flat price. The daemon runs locally per license and doesn't cost more
+    # to operate as a customer protects more GPUs, so gating features (or
+    # concurrent-GPU count) by plan was an arbitrary line, not a real cost
+    # or value difference — and every cold email sent today already
+    # described the full feature set (including cross-cloud bridge)
+    # without mentioning any tier, so gating it now would contradict what
+    # customers were already told.
+    plan_type = 'SpotWarp Pass ($49/mo)'
 
     # Allow subscribing directly from the pricing page without going through
     # the trial flow first — generate a fresh license key server-side if the
@@ -406,32 +421,26 @@ def create_checkout_session():
     if not license_key:
         license_key = f"gpu_act_sk_{os.urandom(12).hex()}"
 
-    is_scale_pass = 'scale' in plan_type.lower() or '199' in plan_type
-
     try:
         base_url = request.host_url.rstrip('/')
         success_url = f"{base_url}/payment-success?session_id={{CHECKOUT_SESSION_ID}}&license_key={license_key}"
         cancel_url = f"{base_url}/#pricing"
 
-        if STRIPE_PRICE_ID and not is_scale_pass:
+        if STRIPE_PRICE_ID:
             # Use pre-created recurring Price ID from Stripe dashboard (preferred)
             line_items = [{'price': STRIPE_PRICE_ID, 'quantity': 1}]
             mode = 'subscription'
         else:
             # Fallback: create price on the fly using price_data
-            if is_scale_pass:
-                product_name, unit_amount = 'SpotWarp Scale Pass', 19900  # $199.00
-            else:
-                product_name, unit_amount = 'SpotWarp Developer Pass', 4900  # $49.00
             line_items = [{
                 'price_data': {
                     'currency': 'usd',
                     'recurring': {'interval': 'month'},
                     'product_data': {
-                        'name': product_name,
-                        'description': 'Zero-Downtime Spot GPU Failover Guard & AI Workload Autopilot — Monthly Subscription',
+                        'name': 'SpotWarp Pass',
+                        'description': 'Continuous automatic backup + cross-cloud Spot GPU failover (Vast.ai + RunPod) — Monthly Subscription',
                     },
-                    'unit_amount': unit_amount,
+                    'unit_amount': 4900,  # $49.00
                 },
                 'quantity': 1,
             }]
@@ -481,7 +490,7 @@ def stripe_webhook():
             (session_data.get('metadata') or {}).get('license_key', '')
         )
         customer_email = session_data.get('customer_details', {}).get('email', '') or session_data.get('customer_email', '')
-        plan_label = (session_data.get('metadata') or {}).get('plan_type') or 'Developer Pass ($49/mo)'
+        plan_label = (session_data.get('metadata') or {}).get('plan_type') or 'SpotWarp Pass ($49/mo)'
 
         if license_key:
             from datetime import timedelta

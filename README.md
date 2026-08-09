@@ -1,12 +1,12 @@
-# ⚡ SpotWarp: Zero-Downtime Spot GPU Failover Guard & Auto-Resumer
+# ⚡ SpotWarp: Never Lose a Training Run to a Spot GPU Eviction
 
 [![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi)](https://pypi.org/project/spotwarp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Security: Audited](https://img.shields.io/badge/Security-Zero--Key--Leakage-green.svg)](https://gpu-action.com)
 
-**SpotWarp** is a lightweight, 100% local Python daemon that protects your AI inference & PyTorch model training workloads on cheap Spot GPUs (Vast.ai + RunPod cross-cloud) by converting unstable, interruptible instances into highly reliable, auto-resuming, stateful infrastructure.
+The real cost of a Spot GPU eviction was never the few minutes of downtime — it's the hours of training progress that vanish with it. **SpotWarp** is a lightweight, 100% local Python daemon that runs continuous automatic backups of your workspace in the background, so an eviction never costs you your work. Sub-minute cross-cloud failover (Vast.ai ⇄ RunPod) is what turns that protected workspace into a hands-off recovery, but the backup is the part that actually saves you.
 
-Save **up to 70% on GPU compute bills** without worrying about sudden evictions or data loss — and when your primary cloud is temporarily out of capacity, SpotWarp bridges you to a second cloud automatically, then brings you back the moment the cheaper option reopens.
+Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of on-demand — the eviction risk that normally makes that a gamble is exactly what SpotWarp removes.
 
 ---
 
@@ -14,26 +14,26 @@ Save **up to 70% on GPU compute bills** without worrying about sudden evictions 
 
 | Feature | Standard Spot Instance | With SpotWarp (v3.2) |
 | :--- | :--- | :--- |
-| **Eviction Consequence** | Workload dies, checkpoints are deleted, money is wasted. | **Zero Data Loss**. Local daemon migrates work instantly. |
+| **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
 | **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement in under a minute. |
 | **If your cloud is out of stock** | Failover fails outright — nothing to migrate to. | **Cross-Cloud Bridge**. Automatically rents on RunPod as a fallback, spot pricing first, on-demand if spot isn't offered. |
 | **Paying bridge-cloud rates forever** | N/A | **Auto-Failback**. Watches for your original cloud's cheaper capacity to return and migrates you back automatically — the bridge cloud is never a permanent home. |
-| **Workload Continuation** | Restart training from epoch 0. | **Auto-Resume**. Script continues running via `nohup` over SSH. |
+| **Workload Continuation** | Restart training from epoch 0. | **Auto-Resume**. Script continues running via `nohup` over SSH, from where the backup left off. |
 | **Security Risk** | Requires placing S3/GitHub keys on unstable rented hosts. | **Zero Key Leakage**. All API keys remain on your local machine. |
 
 ---
 
 ## 💎 Core Commercial Features
 
-* 💸 **CFO-Approved GPU Savings**: Safely exploit cheap Spot pricing on Vast.ai. SpotWarp gives you the reliability of a Dedicated On-Demand GPU for the price of a Spot instance.
+* 🛡️ **Continuous Automatic Backup — the real safety net**: Runs high-speed `rsync`/`scp` incremental backups of your workspace to your local machine in the background, the whole time your instance is running — not just triggered after an eviction is detected. This is the feature that actually prevents loss; everything else below just makes recovering from it fast and hands-off.
 * 🏁 **Parallel Candidate Racing**: On eviction, SpotWarp rents several replacement candidates concurrently instead of trying them one at a time — a single slow or dead host no longer adds minutes to your downtime. Typical failover: well under a minute.
 * 🌐 **Cross-Cloud Fallback (Vast.ai ⇄ RunPod)**: If your primary cloud has zero matching candidates at the moment of eviction, SpotWarp automatically bridges to RunPod — spot pricing first, retrying on-demand if RunPod has no spot capacity for that GPU model — so your workload stays protected instead of failing outright.
 * ↩️ **Automatic Cost-Optimizing Failback**: A bridge-cloud replacement is never left running indefinitely at the higher rate. SpotWarp keeps checking your original cloud in the background and migrates the workload back the instant a cheaper matching candidate reappears — verified end-to-end on a single live instance: rented on Vast.ai, evicted, bridged to RunPod, then automatically migrated back to Vast.ai once capacity returned.
-* 🔄 **Stateful Workload Migration**: Runs high-speed `rsync`/`scp` incremental backups in the background of your local client machine. When eviction strikes, it restores your workspace files to the replacement container before verification.
+* 💸 **CFO-Approved GPU Savings**: Safely exploit cheap Spot pricing on Vast.ai. SpotWarp gives you the reliability of a Dedicated On-Demand GPU for the price of a Spot instance.
 * ✅ **Real Connectivity Verification**: Replacement hosts are confirmed reachable via an actual SSH handshake before they're trusted — not a proxy signal like a Jupyter API ping that can report false negatives on a perfectly healthy host.
 * 🔒 **Zero-Trust Security (100% Local)**: Your cloud provider API keys (`VAST_API_KEY`, `RUNPOD_API_KEY`) stay on your local PC. Rented containers never see your cloud credentials.
 * 📦 **Zero-Configuration**: No need to install daemons, cron jobs, or synchronization tools inside the remote container.
-* ⚡ **Training Auto-Resumer**: Automatically restarts your training scripts (`--resume-cmd`) in the background of the new container, pointing directly to your restored training checkpoints.
+* ⚡ **Training Auto-Resumer**: Automatically restarts your training scripts (`--resume-cmd`) in the background of the new container, pointing directly to your restored, backed-up checkpoints.
 
 ---
 

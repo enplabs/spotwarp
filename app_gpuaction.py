@@ -179,7 +179,7 @@ def send_welcome_email(email_address):
     """
     try:
         resend.Emails.send({
-            "from": "SpotWarp <info@spotwarp.com>",
+            "from": "SpotWarp <info@gpu-action.com>",
             "to": email_address,
             "subject": "[SpotWarp] Welcome to the Compute Waitlist",
             "html": html_content
@@ -195,8 +195,8 @@ def send_admin_email_alert(subject, html_content):
     admin_email = os.getenv("ADMIN_EMAIL", "choi5844@gmail.com")
     try:
         resend.Emails.send({
-            "from": "SpotWarp Admin <info@spotwarp.com>",
-            "to": [admin_email, "info@spotwarp.com"],
+            "from": "SpotWarp Admin <info@gpu-action.com>",
+            "to": [admin_email, "info@gpu-action.com"],
             "subject": f"[SpotWarp] {subject}",
             "html": html_content
         })
@@ -323,10 +323,23 @@ def request_trial():
 
 @app.route('/api/v1/simulate_upgrade', methods=['POST'])
 def simulate_upgrade():
+    # Dev/testing helper that grants a full year of paid access WITHOUT
+    # going through Stripe — was live with zero authentication, meaning
+    # anyone who found it (or just read this file, which is public on
+    # GitHub) could POST any license_key + plan_type and self-grant a free
+    # paid license, completely bypassing the real payment flow. Found
+    # 2026-08-09 during pre-launch review, before any real marketing traffic
+    # reached this code. Gated behind the same admin password used for the
+    # dashboard login — real customers must always go through
+    # create_checkout_session / the Stripe webhook.
     data = request.get_json(silent=True) or request.form or {}
+    admin_password = data.get('admin_password', '').strip()
+    if not ADMIN_PASSWORD or admin_password != ADMIN_PASSWORD:
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+
     license_key = data.get('license_key', '').strip()
     plan_type = data.get('plan_type', 'Developer Pass ($49/mo)').strip()
-    
+
     if not license_key:
         return jsonify({"success": False, "message": "License key is required"}), 400
         

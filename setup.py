@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="spotwarp",
-    version="3.1.1",
+    version="3.2.0",
     description="Zero-Downtime Spot GPU Failover Guard & AI Acceleration Utility for Vast.ai & RunPod",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

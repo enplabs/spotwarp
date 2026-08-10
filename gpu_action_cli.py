@@ -95,11 +95,12 @@ def get_ssh_endpoint(inst: dict):
     return inst.get('ssh_host'), inst.get('ssh_port')
 
 class GpuActionGuard:
-    def __init__(self, license_key: str, vast_api_key: str = None, runpod_api_key: str = None, resume_cmd: str = None):
+    def __init__(self, license_key: str, vast_api_key: str = None, runpod_api_key: str = None, resume_cmd: str = None, backup_dir: str = None):
         self.license_key = license_key
         self.vast_api_key = vast_api_key or os.getenv("VAST_API_KEY", "")
         self.runpod_api_key = runpod_api_key or os.getenv("RUNPOD_API_KEY", "")
         self.resume_cmd = resume_cmd
+        self.backup_root = os.path.abspath(backup_dir or os.getenv("SPOTWARP_BACKUP_DIR", "") or os.path.join(".", "backups"))
         self.headers = {"Accept": "application/json", "Authorization": f"Bearer {self.vast_api_key}"}
         self.is_valid_license = False
         self.tracked_instances = {}  # maps instance_id -> (host, ssh_port, host_id, gpu_name)
@@ -176,12 +177,8 @@ class GpuActionGuard:
             r = requests.get("https://console.vast.ai/api/v1/instances/", headers=self.headers, timeout=10)
             if r.status_code == 200:
                 instances = r.json().get('instances', [])
-                gpu_action_instances = [
-                    i for i in instances 
-                    if i.get('label') and any(x in str(i.get('label')).lower() for x in ('gpu-action', 'spotwarp'))
-                ]
-                active_count = sum(1 for i in gpu_action_instances if i.get('actual_status') == 'running')
-                return {"status": "ok", "active_instances": active_count, "instances": gpu_action_instances}
+                active_count = sum(1 for i in instances if i.get('actual_status') == 'running')
+                return {"status": "ok", "active_instances": active_count, "instances": instances}
             else:
                 return {"status": "error", "message": f"Vast API returned code {r.status_code}: {r.text}"}
         except Exception as e:
@@ -205,12 +202,13 @@ class GpuActionGuard:
         # a workspace could silently never get backed up.
         SYNC_TIMEOUT = 600
 
-        def log_backup_event(message):
+        def log_backup_event(message, quiet=False):
             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
             line = f"[{timestamp}] {message}"
-            print(f"\n[Backup] {message}")
+            if not quiet:
+                print(f"\n[Backup] {message}")
             try:
-                log_path = os.path.abspath(os.path.join(".", "backups", str(inst_id), "sync_errors.log"))
+                log_path = os.path.join(self.backup_root, str(inst_id), "sync_errors.log")
                 os.makedirs(os.path.dirname(log_path), exist_ok=True)
                 with open(log_path, "a", encoding="utf-8") as f:
                     f.write(line + "\n")
@@ -218,7 +216,7 @@ class GpuActionGuard:
                 pass
 
         def sync_worker():
-            local_backup_dir = os.path.abspath(os.path.join(".", "backups", str(inst_id)))
+            local_backup_dir = os.path.join(self.backup_root, str(inst_id))
             os.makedirs(local_backup_dir, exist_ok=True)
 
             if self.use_rsync:
@@ -287,11 +285,15 @@ class GpuActionGuard:
                             consecutive_failures += 1
                             log_backup_event(
                                 f"sync attempt failed (exit {result.returncode}): "
-                                f"{result.stderr.decode(errors='replace')[:300]}"
+                                f"{result.stderr.decode(errors='replace')[:300]}",
+                                quiet=(consecutive_failures < 3)
                             )
                     except subprocess.TimeoutExpired:
                         consecutive_failures += 1
-                        log_backup_event(f"sync attempt exceeded {SYNC_TIMEOUT}s timeout — will retry next cycle")
+                        log_backup_event(
+                            f"sync attempt exceeded {SYNC_TIMEOUT}s timeout — will retry next cycle",
+                            quiet=(consecutive_failures < 3)
+                        )
                     finally:
                         if exclude_file and os.path.exists(exclude_file):
                             os.remove(exclude_file)
@@ -324,7 +326,7 @@ class GpuActionGuard:
 
     def restore_backup(self, old_inst_id, new_inst_id, new_host, new_port) -> bool:
         """Restores backed-up workspace files to replacement container."""
-        old_backup_dir = os.path.abspath(os.path.join(".", "backups", str(old_inst_id)))
+        old_backup_dir = os.path.join(self.backup_root, str(old_inst_id))
         if not os.path.exists(old_backup_dir) or not os.listdir(old_backup_dir):
             print(f"[Restore] No local files found for old instance {old_inst_id}. Skipping migration.")
             return True
@@ -374,7 +376,7 @@ class GpuActionGuard:
             r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
             if r.returncode == 0:
                 print("[Restore] SUCCESS: Workload workspace migrated successfully!")
-                new_backup_dir = os.path.abspath(os.path.join(".", "backups", str(new_inst_id)))
+                new_backup_dir = os.path.join(self.backup_root, str(new_inst_id))
                 if os.path.exists(new_backup_dir):
                     shutil.rmtree(new_backup_dir)
                 os.rename(old_backup_dir, new_backup_dir)
@@ -1072,15 +1074,17 @@ def main():
     parser.add_argument("--vast-api-key", default=os.getenv("VAST_API_KEY", ""), help="Your Vast.ai API key")
     parser.add_argument("--runpod-api-key", default=os.getenv("RUNPOD_API_KEY", ""), help="Your RunPod API key")
     parser.add_argument("--resume-cmd", default=None, help="The training command to execute inside the replacement container upon failover")
-    
+    parser.add_argument("--backup-dir", default=None, help="Local directory to store workspace backups in (default: SPOTWARP_BACKUP_DIR env var, or .\\backups next to where you ran spotwarp)")
+
     args = parser.parse_args()
-    
+
     if args.command == "start":
         guard = GpuActionGuard(
-            license_key=args.license_key, 
+            license_key=args.license_key,
             vast_api_key=args.vast_api_key,
             runpod_api_key=args.runpod_api_key,
-            resume_cmd=args.resume_cmd
+            resume_cmd=args.resume_cmd,
+            backup_dir=args.backup_dir
         )
         guard.run_guard_loop()
 

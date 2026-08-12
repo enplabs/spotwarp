@@ -117,3 +117,12 @@ verify_sliding_scale_exact.py
 verify_top_mdd_high_ret.py
 verify_ultimate_breakthrough.py
 verify_year_by_year.py
+
+# Internal-only: backend source, admin templates, business strategy, infra config
+# (should never have been in the public open-core repo — removed 2026-08-12)
+PRODUCT_STRATEGY.md
+app_gpuaction.py
+templates/admin.html
+templates/admin_login.html
+templates/dashboard.html
+gpu-action.conf

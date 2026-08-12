@@ -430,9 +430,8 @@
                 Spot<span>Warp</span>
             </a>
             <div class="nav-links">
-                <a href="#pillars">Core Pillars</a>
-                <a href="#security">Security Assurance</a>
                 <a href="#pricing">Pricing</a>
+                <a href="/quickstart">Setup Guide</a>
                 <button class="btn-primary" onclick="openTrialModal()">14-Day Free Trial</button>
                 <button class="btn-primary" style="background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff;" onclick="openLoginModal()"><i class="fa-solid fa-terminal" style="color: var(--accent-orange);"></i> Console</button>
             </div>
@@ -451,12 +450,12 @@
             <!-- Code snippet -->
             <div class="code-box">
                 <div class="code-header">
-                    <span><i class="fa-brands fa-docker"></i> GitHub Container Registry (GHCR) Image</span>
-                    <span><i class="fa-solid fa-cloud-arrow-up"></i> One-Click Marketplace Ready</span>
+                    <span><i class="fa-brands fa-python"></i> Quick Start (PyPI)</span>
+                    <span><i class="fa-solid fa-circle-check"></i> 2-Minute Setup</span>
                 </div>
                 <div class="code-content">
-                    <code>ghcr.io/enplabs/spotwarp:pytorch2.1</code>
-                    <button class="copy-btn" onclick="copyDockerImage()">Copy Image</button>
+                    <code>pip install spotwarp</code>
+                    <button class="copy-btn" onclick="copyInstallCommand()">Copy Command</button>
                 </div>
             </div>
 
@@ -520,8 +519,12 @@
                 </a>
                 <div style="background: var(--bg-color); padding: 24px 32px; border-radius: 12px; border: 1px solid var(--card-border); max-width: 320px;">
                     <i class="fa-brands fa-docker" style="font-size: 2rem; color: var(--accent-blue); margin-bottom: 12px;"></i>
-                    <h4 style="margin-bottom: 8px;">Docker Sandboxed</h4>
-                    <p style="font-size: 0.9rem; color: var(--text-muted);">Run inside a 100% isolated Docker container to guarantee zero host system file access.</p>
+                    <h4 style="margin-bottom: 8px;">Docker Sandboxed (optional)</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">Prefer to run isolated in a container instead of via pip? Pull the image directly:</p>
+                    <div style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px;">
+                        <code style="font-size: 0.78rem; color: var(--accent-cyan); word-break: break-all;">docker pull ghcr.io/enplabs/spotwarp:pytorch2.1</code>
+                        <button class="copy-btn" style="flex-shrink: 0;" onclick="copyDockerPull()">Copy</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -556,15 +559,15 @@
     <!-- Footer Sub-Navigation -->
     <div style="border-top: 1px solid var(--card-border); padding: 40px 0 20px; text-align: center; background: rgba(10, 15, 30, 0.6);">
         <div class="container" style="display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; font-size: 0.95rem; color: #94a3b8;">
-            <a href="javascript:void(0)" onclick="alert('SpotWarp is an open-core AI infrastructure utility developed by ENPLabs Group.')" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">About</a>
+            <a href="/contact" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Contact</a>
             <span style="color: #334155;">|</span>
-            <a href="mailto:info@gpu-action.com" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Contact</a>
+            <a href="/privacy" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
             <span style="color: #334155;">|</span>
-            <a href="javascript:void(0)" onclick="alert('Privacy Policy: Zero Telemetry & Zero API Key Retention. Your cloud API keys never leave your host machine.')" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
+            <a href="/docs" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Documentation</a>
             <span style="color: #334155;">|</span>
-            <a href="https://pypi.org/project/spotwarp/" target="_blank" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Insights Hub</a>
+            <a href="https://pypi.org/project/spotwarp/" target="_blank" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">PyPI Package</a>
             <span style="color: #334155;">|</span>
-            <a href="https://github.com/enplabs/spotwarp" target="_blank" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Documentation</a>
+            <a href="https://github.com/enplabs/spotwarp" target="_blank" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">GitHub</a>
         </div>
     </div>
 
@@ -622,9 +625,14 @@
     </div>
 
     <script>
-        function copyDockerImage() {
-            navigator.clipboard.writeText("ghcr.io/enplabs/spotwarp:pytorch2.1");
-            alert("Docker Image Path copied to clipboard!");
+        function copyInstallCommand() {
+            navigator.clipboard.writeText("pip install spotwarp");
+            alert("Install command copied to clipboard!");
+        }
+
+        function copyDockerPull() {
+            navigator.clipboard.writeText("docker pull ghcr.io/enplabs/spotwarp:pytorch2.1");
+            alert("Docker pull command copied to clipboard!");
         }
 
         function openTrialModal() {

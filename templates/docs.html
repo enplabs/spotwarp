@@ -325,6 +325,7 @@
                 <div class="sidebar-group">
                     <span class="sidebar-group-title">Getting Started</span>
                     <a href="#intro" class="sidebar-link active">Introduction</a>
+                    <a href="#rent-gpu" class="sidebar-link">Rent Your GPU</a>
                     <a href="#install" class="sidebar-link">Installation</a>
                     <a href="#config" class="sidebar-link">Environment Configuration</a>
                 </div>
@@ -348,10 +349,10 @@
                 <section id="intro" class="docs-section">
                     <h2>Introduction</h2>
                     <p>
-                        <strong>SpotWarp</strong> is a lightweight, 100% local Python autopilot daemon designed to protect your AI training and inference workloads running on cheap Spot instances (Vast.ai, RunPod, AWS Spot) from sudden evictions, ensuring zero data loss and continuous service uptime.
+                        <strong>SpotWarp</strong> is a lightweight, 100% local Python autopilot daemon that runs continuous background backups of your workspace the whole time your Spot instance (Vast.ai, RunPod) is running — so an eviction never costs you training progress, not just downtime.
                     </p>
                     <p>
-                        By exploiting Spot pricing, you can save <strong>up to 70% on cloud compute bills</strong>. When an eviction warning fires, the SpotWarp daemon rents a matching alternative host, migrates your workspace files (via <code>scp</code> on Windows, or <code>rsync</code> where natively available), restarts your training scripts, and binds active endpoints — automatically, without manual intervention.
+                        By exploiting Spot pricing, you can save <strong>up to 70% on cloud compute bills</strong>. When an eviction fires, SpotWarp races several replacement candidates on Vast.ai concurrently (typically under a minute), restores your already-backed-up workspace, and resumes your training scripts automatically. If Vast has no matching candidate at that moment, it bridges to RunPod instead — spot pricing first, on-demand if needed — then migrates back to Vast.ai on its own once cheaper capacity reopens, so the bridge cloud is never a permanent, more expensive home.
                     </p>
                     
                     <div class="callout callout-success">
@@ -362,11 +363,30 @@
                     </div>
                 </section>
                 
-                <!-- 2. Installation -->
+                <!-- 2. Rent Your GPU -->
+                <section id="rent-gpu" class="docs-section">
+                    <h2>Rent Your GPU</h2>
+                    <p>
+                        SpotWarp does not rent, resell, or hold any GPU inventory — we never broker compute. You rent directly from Vast.ai (and optionally RunPod), and SpotWarp is the local daemon that watches and protects whatever you've rented there.
+                    </p>
+                    <ol>
+                        <li>Sign up directly at <a href="https://vast.ai" target="_blank" style="color: var(--accent-cyan); font-weight: 600; text-decoration: underline;">vast.ai</a> if you don't already have an account, and generate an API key from your account settings.</li>
+                        <li>Optionally, do the same at <a href="https://runpod.io?ref=26dyf87o" target="_blank" style="color: var(--accent-cyan); font-weight: 600; text-decoration: underline;">runpod.io</a> — this enables the cross-cloud bridge, which covers you if Vast.ai has no matching GPU in stock at the moment of an eviction.</li>
+                        <li>Rent your GPU instance yourself, directly on Vast.ai's console (choose your GPU model, spot pricing) — this step happens entirely on their platform, not ours.</li>
+                    </ol>
+                    <div class="callout">
+                        <div class="callout-title"><i class="fa-solid fa-info"></i> No instance ID needed later</div>
+                        <p style="margin: 0; font-size: 0.9rem;">
+                            Once you install SpotWarp and start the guard (below), it automatically detects the instance(s) already running under your Vast.ai API key — you never need to pass an instance ID.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- 3. Installation -->
                 <section id="install" class="docs-section">
                     <h2>Installation</h2>
                     <p>
-                        If Python 3.8+ is installed on your local host machine, you can install the official package via Pip in seconds:
+                        Once you have a GPU instance running (previous step), install SpotWarp on your own local PC — not on the rented instance. If Python 3.8+ is installed on your local host machine, you can install the official package via Pip in seconds:
                     </p>
                     <pre><button class="btn-copy-code" onclick="copyText('pip install spotwarp')">Copy</button><code>pip install spotwarp</code></pre>
                     
@@ -406,8 +426,14 @@ $env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
                             For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>TRIAL_LOCAL_PASS</code> as the license argument (or simply omitting <code>--license-key</code>, which defaults to it).
                         </p>
                     </div>
+
+                    <h3>Choosing where backups are stored</h3>
+                    <p>
+                        By default, workspace backups are written to <code>.\backups\&lt;instance_id&gt;\</code> relative to wherever you ran <code>spotwarp start</code> from. To use a different drive or folder (e.g. if your system drive is low on space), pass <code>--backup-dir</code> or set the <code>SPOTWARP_BACKUP_DIR</code> environment variable:
+                    </p>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --license-key YOUR_LICENSE_KEY --backup-dir &quot;D:\\SpotwarpBackups&quot;')">Copy</button><code>spotwarp start --license-key YOUR_LICENSE_KEY --backup-dir "D:\SpotwarpBackups"</code></pre>
                 </section>
-                
+
                 <!-- 5. Stateful Auto-Resume -->
                 <section id="auto-resume" class="docs-section">
                     <h2>Stateful Auto-Resume</h2>
@@ -442,7 +468,47 @@ $env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
                         The CLI daemon runs strictly in user space on your local computer. It does not require root/sudo access, and can run inside isolated docker containers, making it completely safe for enterprise production environments.
                     </p>
                 </section>
-                
+
+                <!-- 8. Troubleshooting -->
+                <section id="troubleshooting" class="docs-section">
+                    <h2>Troubleshooting</h2>
+
+                    <h3>"License verification endpoint returned status 401"</h3>
+                    <p>
+                        Your <code>--license-key</code> value doesn't match an active license. This is almost always a copy-paste issue — a prefix like <code>TRIAL_</code> got dropped, or two keys got concatenated together. Copy the full key directly from your trial confirmation or the <a href="/dashboard" target="_blank" style="color: var(--accent-cyan); text-decoration: underline;">Console Dashboard</a> and paste it in one piece.
+                    </p>
+
+                    <h3>"Monitoring 0 instances"</h3>
+                    <p>
+                        This is expected if you haven't rented a GPU on Vast.ai yet — see <a href="#rent-gpu" style="color: var(--accent-cyan); text-decoration: underline;">Rent Your GPU</a>. If you do have an instance running and it's still showing 0, double-check that <code>VAST_API_KEY</code> is set in the <em>same terminal window</em> you ran <code>spotwarp start</code> in — environment variables don't carry over to a new window.
+                    </p>
+
+                    <div class="callout">
+                        <div class="callout-title"><i class="fa-solid fa-info"></i> Windows PowerShell syntax</div>
+                        <p style="margin: 0; font-size: 0.9rem;">
+                            Use <code>$env:VAST_API_KEY="..."</code>, not <code>export VAST_API_KEY="..."</code> — <code>export</code> is a macOS/Linux-only shell command and will error out (<code>CommandNotFoundException</code>) in PowerShell.
+                        </p>
+                    </div>
+
+                    <h3>"[Backup] sync attempt failed (exit 255): Connection closed"</h3>
+                    <p>
+                        A freshly rented instance can take a minute or so after it shows as "running" on Vast.ai before its SSH server is actually ready to accept connections. A single failed sync attempt right after an instance is first detected is expected — SpotWarp retries automatically every 30 seconds, and a one-off failure like this is not logged to the console (only written to that instance's <code>sync_errors.log</code>) so it doesn't look like an error when it isn't one.
+                    </p>
+                    <p>
+                        If the same instance fails <strong>3 or more times in a row</strong>, SpotWarp prints an explicit warning to the console — that's the signal something is actually wrong (not just still booting) and worth investigating: check that the instance is reachable via <code>ssh -p &lt;port&gt; root@&lt;host&gt;</code> yourself, and that <code>/workspace/</code> exists inside the container.
+                    </p>
+
+                    <h3>Where are my backups?</h3>
+                    <p>
+                        Locally, in <code>.\backups\&lt;instance_id&gt;\</code> relative to wherever you ran <code>spotwarp start</code> from — unless you set <code>--backup-dir</code> or <code>SPOTWARP_BACKUP_DIR</code> (see <a href="#activation" style="color: var(--accent-cyan); text-decoration: underline;">Start Guard Daemon</a>), in which case it's there instead. Nothing is ever uploaded off your machine.
+                    </p>
+
+                    <h3>Still stuck?</h3>
+                    <p>
+                        Email <a href="mailto:info@gpu-action.com" style="color: var(--accent-cyan); text-decoration: underline;">info@gpu-action.com</a> with your license key and the console output around the issue — we read every message.
+                    </p>
+                </section>
+
             </main>
             
         </div>

@@ -437,6 +437,15 @@ class GpuActionGuard:
         # (non-laptop) cards of the same model booted every time. They're
         # usually also not meaningfully cheaper, so excluding them costs
         # little and removes the biggest observed source of failed replacements.
+        #
+        # 'deverified' hosts (failed Vast's own re-verification) were live-
+        # tested 2026-08-12 and confirmed real: one such host produced 4/4
+        # SSH connection failures across separate attempts and, separately,
+        # billed $4.90 in bandwidth for a fresh (uncached) image pull on an
+        # instance that was destroyed within minutes for never becoming
+        # reachable — a real customer would eat that same surprise charge
+        # on an evicted-and-immediately-replaced candidate. Excluding
+        # non-'verified' hosts here removes that failure mode at the source.
         candidate_offers = []
         try:
             r_query = requests.get('https://cloud.vast.ai/api/v0/bundles/', params={'q': json.dumps(q)}, headers=self.headers, timeout=15)
@@ -447,6 +456,7 @@ class GpuActionGuard:
                     if match_token in o.get('gpu_name', '').lower()
                     and 'laptop' not in o.get('gpu_name', '').lower()
                     and o.get('host_id') != exclude_host_id
+                    and o.get('verification') == 'verified'
                 ]
         except Exception:
             pass
@@ -994,7 +1004,11 @@ class GpuActionGuard:
         print("==================================================")
         
         if not self.verify_license():
-            print("❌ Invalid license. Please subscribe or start a 14-day trial at https://gpu-action.com")
+            print("❌ Invalid or expired license.")
+            print("   Already have a key? Log in at https://gpu-action.com/quickstart#console (or the")
+            print("   Console button) with this SAME license key and click 'Buy SpotWarp Pass' — your")
+            print("   daemon keeps working with the same key, no need to change your command.")
+            print("   No key yet? Start a 14-day trial at https://gpu-action.com")
             sys.exit(1)
 
         print("[SpotWarp Guard] Failover Guard is now ACTIVE. Monitoring Spot instances...")

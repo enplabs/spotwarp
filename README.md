@@ -4,6 +4,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Security: Audited](https://img.shields.io/badge/Security-Zero--Key--Leakage-green.svg)](https://gpu-action.com)
 
+<div align="center">
+  <img src="static/spotwarp_demo.gif" alt="SpotWarp 30s Terminal Demo" width="100%" />
+</div>
+
 The real cost of a Spot GPU eviction was never the few minutes of downtime — it's the hours of training progress that vanish with it. **SpotWarp** is a lightweight, 100% local Python daemon that runs continuous automatic backups of your workspace in the background, so an eviction never costs you your work. Sub-minute cross-cloud failover (Vast.ai ⇄ RunPod) is what turns that protected workspace into a hands-off recovery, but the backup is the part that actually saves you.
 
 Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of on-demand — the eviction risk that normally makes that a gamble is exactly what SpotWarp removes.

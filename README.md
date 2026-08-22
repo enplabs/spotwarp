@@ -43,18 +43,28 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ## 🚀 Quick Start in 1 Minute
 
-### 1. Installation (Local PC)
-Install the official package via Pip:
+### 1. Installation (Universal 1-Liner or pip)
+
+**Linux / macOS (1-Liner):**
+```bash
+curl -fsSL https://gpu-action.com/install.sh | bash
+```
+
+**Windows PowerShell (1-Liner):**
+```powershell
+irm https://gpu-action.com/install.ps1 | iex
+```
+
+**Standard Python pip (Any OS):**
 ```bash
 pip install --upgrade spotwarp
 ```
 
-### 2. One-Time Interactive Setup Wizard
-Run the setup wizard once to save your keys locally to `~/.spotwarp/config.json`:
+### 2. Zero-Config Smart Sniffing or 1-Minute Setup
+SpotWarp automatically detects your existing Vast.ai and RunPod keys from `~/.vast_api_key` or `~/.runpod/config.toml`. Or run the interactive setup wizard:
 ```bash
 spotwarp init
 ```
-*(Prompts for your SpotWarp License Key and Vast.ai API Key — RunPod key is optional for cross-cloud fallback.)*
 
 ### 3. Start the Guard
 ```bash

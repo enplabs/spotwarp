@@ -75,6 +75,42 @@ def _is_private_ip(ip: str) -> bool:
         return False
 
 
+def sniff_local_api_keys():
+    """Automatically sniffs existing Vast.ai and RunPod API keys from user's
+    local machine without requiring manual copy-pasting (Zero-Config mode)."""
+    vast_key = os.getenv("VAST_API_KEY", "")
+    runpod_key = os.getenv("RUNPOD_API_KEY", "")
+
+    # 1. Check ~/.vast_api_key (Official Vast CLI config file)
+    if not vast_key:
+        vast_file = os.path.expanduser("~/.vast_api_key")
+        if os.path.exists(vast_file):
+            try:
+                with open(vast_file, "r", encoding="utf-8") as f:
+                    c = f.read().strip()
+                    if c and len(c) >= 20:
+                        vast_key = c
+            except Exception:
+                pass
+
+    # 2. Check ~/.runpod/config.toml (Official RunPod CLI config file)
+    if not runpod_key:
+        rp_file = os.path.expanduser("~/.runpod/config.toml")
+        if os.path.exists(rp_file):
+            try:
+                with open(rp_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if "api_key" in line and "=" in line:
+                            val = line.split("=")[1].strip().strip("\"'")
+                            if val.startswith("rpa_"):
+                                runpod_key = val
+                                break
+            except Exception:
+                pass
+
+    return vast_key, runpod_key
+
+
 def get_ssh_endpoint(inst: dict):
     """Prefer a direct public_ipaddr:port connection over Vast's ssh#.vast.ai
     proxy. Observed in practice: the proxy route can fail at the SSH kex
@@ -96,9 +132,11 @@ def get_ssh_endpoint(inst: dict):
 
 class GpuActionGuard:
     def __init__(self, license_key: str, vast_api_key: str = None, runpod_api_key: str = None, resume_cmd: str = None, backup_dir: str = None):
+        sniffed_v, sniffed_r = sniff_local_api_keys()
         self.license_key = license_key
-        self.vast_api_key = vast_api_key or os.getenv("VAST_API_KEY", "")
-        self.runpod_api_key = runpod_api_key or os.getenv("RUNPOD_API_KEY", "")
+        self.vast_api_key = vast_api_key or os.getenv("VAST_API_KEY", "") or sniffed_v
+        self.runpod_api_key = runpod_api_key or os.getenv("RUNPOD_API_KEY", "") or sniffed_r
+
         self.resume_cmd = resume_cmd
         self.backup_root = os.path.abspath(backup_dir or os.getenv("SPOTWARP_BACKUP_DIR", "") or os.path.join(".", "backups"))
         self.headers = {"Accept": "application/json", "Authorization": f"Bearer {self.vast_api_key}"}
@@ -1081,11 +1119,35 @@ class GpuActionGuard:
                 self.reporting_thread.join(timeout=3)
             print("[SpotWarp Guard] Guard daemon stopped gracefully.")
 
-VERSION = "3.3.0"
+VERSION = "3.3.1"
 CONFIG_DIR = os.path.expanduser("~/.spotwarp")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
 LOG_FILE = os.path.join(CONFIG_DIR, "spotwarp_daemon.log")
+
+
+def sniff_local_api_keys():
+    vast_key = None
+    vast_path = os.path.expanduser("~/.vast_api_key")
+    if os.path.exists(vast_path):
+        try:
+            with open(vast_path, "r") as f:
+                vast_key = f.read().strip()
+        except: pass
+
+    runpod_key = None
+    runpod_path = os.path.expanduser("~/.runpod/config.toml")
+    if os.path.exists(runpod_path):
+        try:
+            with open(runpod_path, "r") as f:
+                content = f.read()
+                import re
+                match = re.search(r'api_key\s*=\s*["\']([^"\']+)["\']', content)
+                if match:
+                    runpod_key = match.group(1)
+        except: pass
+    
+    return vast_key, runpod_key
 
 
 def load_config():
@@ -1109,9 +1171,10 @@ def cmd_init():
     print("⚡ SpotWarp Quick Setup Wizard (100% Local Setup)")
     print("==================================================")
     cfg = load_config()
+    sniffed_vast, sniffed_runpod = sniff_local_api_keys()
 
     current_lic = cfg.get("license_key", "")
-    lic_prompt = f"Enter SpotWarp License Key [{current_lic[:10]}...]: " if current_lic else "Enter SpotWarp License Key: "
+    lic_prompt = f"Enter SpotWarp License Key [{current_lic[:10]}...]: " if current_lic else "Enter SpotWarp License Key (press Enter for Trial): "
     try:
         lic_in = input(lic_prompt).strip()
     except (EOFError, KeyboardInterrupt):
@@ -1122,7 +1185,10 @@ def cmd_init():
     elif not current_lic:
         cfg["license_key"] = "TRIAL_LOCAL_PASS"
 
-    current_vast = cfg.get("vast_api_key", "")
+    current_vast = cfg.get("vast_api_key", "") or sniffed_vast
+    if sniffed_vast and not cfg.get("vast_api_key"):
+        print(f"[+] Zero-Config: Auto-detected Vast.ai API Key from ~/.vast_api_key!")
+    
     vast_prompt = f"Enter Vast.ai API Key [{current_vast[:6]}...]: " if current_vast else "Enter Vast.ai API Key: "
     try:
         vast_in = input(vast_prompt).strip()
@@ -1131,8 +1197,13 @@ def cmd_init():
         return
     if vast_in:
         cfg["vast_api_key"] = vast_in
+    elif current_vast:
+        cfg["vast_api_key"] = current_vast
 
-    current_runpod = cfg.get("runpod_api_key", "")
+    current_runpod = cfg.get("runpod_api_key", "") or sniffed_runpod
+    if sniffed_runpod and not cfg.get("runpod_api_key"):
+        print(f"[+] Zero-Config: Auto-detected RunPod API Key from ~/.runpod/config.toml!")
+
     runpod_prompt = f"Enter RunPod API Key (optional) [{current_runpod[:6]}...]: " if current_runpod else "Enter RunPod API Key (optional, press Enter to skip): "
     try:
         runpod_in = input(runpod_prompt).strip()
@@ -1140,6 +1211,8 @@ def cmd_init():
         runpod_in = ""
     if runpod_in:
         cfg["runpod_api_key"] = runpod_in
+    elif current_runpod:
+        cfg["runpod_api_key"] = current_runpod
 
     current_backup = cfg.get("backup_dir", "")
     backup_prompt = "Backup Directory [default: ./backups]: " if not current_backup else f"Backup Directory [{current_backup}]: "
@@ -1160,20 +1233,24 @@ def cmd_init():
 
 def cmd_status():
     if not os.path.exists(PID_FILE):
-        print("[SpotWarp Status] Background daemon is NOT running.")
+        print("⏸️  [SpotWarp Status] No background daemon is currently running.")
         return
+
     try:
         with open(PID_FILE, "r", encoding="utf-8") as f:
             pid = int(f.read().strip())
     except Exception:
-        print("[SpotWarp Status] Invalid PID file.")
+        print("⚠️  [SpotWarp Status] Stale PID file found. Daemon is not running.")
         return
 
+    # Check if process is alive
     is_alive = False
     if sys.platform == 'win32':
-        res = subprocess.run(["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True)
-        if str(pid) in res.stdout:
-            is_alive = True
+        try:
+            out = subprocess.check_output(f"tasklist /FI \"PID eq {pid}\"", shell=True).decode()
+            is_alive = str(pid) in out
+        except Exception:
+            is_alive = False
     else:
         try:
             os.kill(pid, 0)
@@ -1182,10 +1259,17 @@ def cmd_status():
             is_alive = False
 
     if is_alive:
-        print(f"🟢 [SpotWarp Status] Daemon is RUNNING in background (PID: {pid}).")
-        print(f"   Log path: {LOG_FILE}")
+        print(f"🟢 [SpotWarp Status] Guard daemon is ACTIVE (PID: {pid})")
+        print(f"   Log file: {LOG_FILE}")
+        if os.path.exists(LOG_FILE):
+            print("\n--- Recent Log Lines ---")
+            with open(LOG_FILE, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+                for line in lines[-10:]:
+                    print("   " + line.rstrip())
+            print("------------------------")
     else:
-        print(f"⚪ [SpotWarp Status] Daemon is NOT running (stale PID: {pid}).")
+        print(f"🔴 [SpotWarp Status] Guard daemon (PID: {pid}) is not responding.")
         try:
             os.remove(PID_FILE)
         except Exception:
@@ -1194,43 +1278,41 @@ def cmd_status():
 
 def cmd_stop():
     if not os.path.exists(PID_FILE):
-        print("[SpotWarp Stop] No background daemon PID found.")
+        print("ℹ️  [SpotWarp Stop] No background daemon is running.")
         return
+
     try:
         with open(PID_FILE, "r", encoding="utf-8") as f:
             pid = int(f.read().strip())
     except Exception:
-        print("[SpotWarp Stop] Invalid PID file.")
-        return
+        pid = None
 
-    print(f"[SpotWarp Stop] Terminating background daemon (PID: {pid})...")
-    if sys.platform == 'win32':
-        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
-    else:
-        try:
-            import signal
-            os.kill(pid, signal.SIGTERM)
-        except Exception as e:
-            print(f"Stop error: {e}")
+    if pid:
+        if sys.platform == 'win32':
+            subprocess.run(f"taskkill /F /PID {pid}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            try:
+                os.kill(pid, 15)
+            except OSError:
+                pass
 
-    try:
+    if os.path.exists(PID_FILE):
         os.remove(PID_FILE)
-    except Exception:
-        pass
     print("✅ [SpotWarp Stop] Daemon stopped successfully.")
 
 
 def cmd_config():
     cfg = load_config()
+    sniffed_v, sniffed_r = sniff_local_api_keys()
     print("==================================================")
     print("🔧 SpotWarp Current Configuration (~/.spotwarp/config.json)")
     print("==================================================")
-    if not cfg:
+    if not cfg and not sniffed_v:
         print("No configuration saved yet. Run 'spotwarp init' to configure.")
     else:
-        lic = cfg.get("license_key", "")
-        vast = cfg.get("vast_api_key", "")
-        runpod = cfg.get("runpod_api_key", "")
+        lic = cfg.get("license_key", "TRIAL_LOCAL_PASS")
+        vast = cfg.get("vast_api_key", "") or sniffed_v
+        runpod = cfg.get("runpod_api_key", "") or sniffed_r
         backup = cfg.get("backup_dir", "./backups")
         
         lic_masked = f"{lic[:8]}...{lic[-4:]}" if len(lic) > 12 else lic
@@ -1238,8 +1320,8 @@ def cmd_config():
         runpod_masked = f"{runpod[:4]}...{runpod[-4:]}" if len(runpod) > 8 else ("Set" if runpod else "Not set")
 
         print(f"  License Key:   {lic_masked}")
-        print(f"  Vast.ai Key:   {vast_masked}")
-        print(f"  RunPod Key:    {runpod_masked}")
+        print(f"  Vast.ai Key:   {vast_masked}" + (" (Auto-detected)" if not cfg.get("vast_api_key") and sniffed_v else ""))
+        print(f"  RunPod Key:    {runpod_masked}" + (" (Auto-detected)" if not cfg.get("runpod_api_key") and sniffed_r else ""))
         print(f"  Backup Dir:    {backup}")
     print("==================================================")
 
@@ -1279,9 +1361,10 @@ def main():
     if not args.command or args.command == "start":
         # If run as bare `spotwarp`, default to `start`
         cfg = load_config()
+        sniffed_v, sniffed_r = sniff_local_api_keys()
         lic = getattr(args, "license_key", None) or os.getenv("SPOTWARP_LICENSE") or cfg.get("license_key") or "TRIAL_LOCAL_PASS"
-        vast_k = getattr(args, "vast_api_key", None) or os.getenv("VAST_API_KEY") or cfg.get("vast_api_key", "")
-        runpod_k = getattr(args, "runpod_api_key", None) or os.getenv("RUNPOD_API_KEY") or cfg.get("runpod_api_key", "")
+        vast_k = getattr(args, "vast_api_key", None) or os.getenv("VAST_API_KEY") or cfg.get("vast_api_key", "") or sniffed_v
+        runpod_k = getattr(args, "runpod_api_key", None) or os.getenv("RUNPOD_API_KEY") or cfg.get("runpod_api_key", "") or sniffed_r
         resume_c = getattr(args, "resume_cmd", None) or cfg.get("resume_cmd")
         backup_d = getattr(args, "backup_dir", None) or os.getenv("SPOTWARP_BACKUP_DIR") or cfg.get("backup_dir")
         daemon_mode = getattr(args, "daemon", False)
@@ -1308,7 +1391,7 @@ def main():
             with open(PID_FILE, "w", encoding="utf-8") as f:
                 f.write(str(proc.pid))
 
-            print(f"🚀 [SpotWarp Guard] Started in BACKGROUND (PID: {proc.pid})")
+            print(f"🚀 [SpotWarp Guard v{VERSION}] Started in BACKGROUND (PID: {proc.pid})")
             print(f"   Log output: {LOG_FILE}")
             print(f"   Check status: spotwarp status")
             print(f"   Stop daemon:  spotwarp stop")
@@ -1335,4 +1418,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

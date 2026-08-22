@@ -211,11 +211,21 @@ footer a:hover{text-decoration:underline;}
   <div class="step-head">
     <div class="step-num">1</div>
     <h2>Install SpotWarp</h2>
-    <span class="step-sub">on your local machine / server</span>
+    <span class="step-sub">1-line universal installer</span>
   </div>
-  <p class="lead">Works on Linux, macOS, and Windows. No root or sudo required.</p>
-  <div class="code-panel">
-    <div class="code-label"><b>terminal (any OS)</b></div>
+  <p class="lead">Run the 1-liner installer or use standard pip. No root or sudo required.</p>
+  <div class="two-col">
+    <div class="code-panel">
+      <div class="code-label"><b>Linux / macOS (1-Liner)</b></div>
+      <pre>curl <span class="flag">-fsSL</span> https://gpu-action.com/install.sh | bash</pre>
+    </div>
+    <div class="code-panel">
+      <div class="code-label"><b>Windows PowerShell (1-Liner)</b></div>
+      <pre>irm https://gpu-action.com/install.ps1 | iex</pre>
+    </div>
+  </div>
+  <div class="code-panel" style="margin-top: 12px;">
+    <div class="code-label"><b>Standard Python pip (Any OS)</b></div>
     <pre>pip install <span class="flag">--upgrade</span> spotwarp</pre>
   </div>
 </section>
@@ -223,16 +233,16 @@ footer a:hover{text-decoration:underline;}
 <section>
   <div class="step-head">
     <div class="step-num">2</div>
-    <h2>Run One-Time Quick Setup</h2>
+    <h2>Zero-Config Setup</h2>
     <span class="step-sub">100% local config</span>
   </div>
-  <p class="lead">Interactive wizard saves your keys locally to <code>~/.spotwarp/config.json</code> so you never need to export environment variables again.</p>
+  <p class="lead">SpotWarp automatically detects your existing Vast.ai and RunPod keys from local CLI configs (<code>~/.vast_api_key</code> / <code>~/.runpod/config.toml</code>). Or run the 1-minute setup wizard:</p>
   <div class="code-panel">
     <div class="code-label"><b>terminal (any OS)</b></div>
     <pre>spotwarp init</pre>
   </div>
   <div class="callout">
-    Enter your <b>SpotWarp License Key</b> (or start with trial key) and <b>Vast.ai API Key</b>. RunPod key is optional for cross-cloud fallback.
+    ✨ <b>Zero-Config Smart Sniffing:</b> If you already use Vast.ai or RunPod CLI, you can skip <code>spotwarp init</code> entirely and jump straight to Step 3!
   </div>
 </section>
 

@@ -1,6 +1,6 @@
 # How We Built SpotWarp: A Local Spot GPU Failover Guard in Python
 
-*Published by the SpotWarp Engineering Team*
+*Published by the SpotWarp Engineering Team (v3.3.3)*
 
 Running LLMs, Stable Diffusion, or PyTorch models on on-demand cloud GPUs (like AWS p4d / g5 instances) costs $3.50 to $4.50 per hour. Meanwhile, Spot instances on platforms like Vast.ai or RunPod offer the exact same NVIDIA RTX 3090 / A100 GPUs for **$0.15 to $0.40 per hour — a 70% to 90% discount**.
 

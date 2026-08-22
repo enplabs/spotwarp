@@ -5,7 +5,7 @@ set -e
 SERVER_URL=${GPU_ACTION_SERVER_URL:-"https://gpu-action.com"}
 
 echo "============================================="
-echo "   SpotWarp Spot-Guard Bootstrapper v3.0"
+echo "   SpotWarp Spot-Guard Bootstrapper v3.3.3"
 echo "============================================="
 
 if [ -z "$LICENSE_KEY" ]; then

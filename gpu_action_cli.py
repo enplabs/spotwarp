@@ -41,6 +41,21 @@ CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
 TEMPLATE_HASH_ID = "5d762fad90ee6aa0f8636464e142ad29"
 
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == 'win32' else 0
+
+def safe_run_subp(cmd, **kwargs):
+    """Executes subprocess.run without flashing console windows on Windows."""
+    if sys.platform == 'win32' and 'creationflags' not in kwargs:
+        kwargs['creationflags'] = CREATE_NO_WINDOW
+    return subprocess.run(cmd, **kwargs)
+
+def safe_popen_subp(cmd, **kwargs):
+    """Executes subprocess.Popen without flashing console windows on Windows."""
+    if sys.platform == 'win32' and 'creationflags' not in kwargs:
+        kwargs['creationflags'] = CREATE_NO_WINDOW
+    return subprocess.Popen(cmd, **kwargs)
+
+
 def to_rsync_path(path: str) -> str:
     """Converts a native path to a form safe to pass as a purely-local
     rsync/scp argument. On Windows, a bare drive letter ('C:\\...') is
@@ -178,7 +193,7 @@ class GpuActionGuard:
             r = requests.post(
                 LICENSE_VERIFY_ENDPOINT,
                 json={"license_key": self.license_key},
-                headers={"User-Agent": "SpotWarp-Guard/3.2"},
+                headers={"User-Agent": f"SpotWarp-Guard/{VERSION}"},
                 timeout=10
             )
             if r.status_code == 200:
@@ -316,7 +331,7 @@ class GpuActionGuard:
                         ]
 
                     try:
-                        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=SYNC_TIMEOUT)
+                        result = safe_run_subp(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=SYNC_TIMEOUT)
                         if result.returncode == 0:
                             consecutive_failures = 0
                         else:
@@ -377,10 +392,11 @@ class GpuActionGuard:
         # immediately ("no such file"), silently skipping the whole
         # restore. Ensure it exists first.
         try:
-            subprocess.run(
+            safe_run_subp(
                 [
                     "ssh", "-p", str(new_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "ConnectTimeout=5",
                     "-o", f"UserKnownHostsFile={null_file}",
                     f"root@{new_host}", "mkdir -p /workspace"
                 ],
@@ -403,6 +419,7 @@ class GpuActionGuard:
             cmd = [
                 "scp",
                 "-o", "StrictHostKeyChecking=no",
+                "-o", "ConnectTimeout=5",
                 "-o", "UserKnownHostsFile=NUL" if sys.platform == 'win32' else "UserKnownHostsFile=/dev/null",
                 "-P", str(new_port),
                 "-r",
@@ -411,7 +428,7 @@ class GpuActionGuard:
             ]
             
         try:
-            r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
+            r = safe_run_subp(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
             if r.returncode == 0:
                 print("[Restore] SUCCESS: Workload workspace migrated successfully!")
                 new_backup_dir = os.path.join(self.backup_root, str(new_inst_id))
@@ -433,110 +450,96 @@ class GpuActionGuard:
         ssh_cmd = [
             "ssh",
             "-o", "StrictHostKeyChecking=no",
+            "-o", "ConnectTimeout=5",
             "-o", "UserKnownHostsFile=" + null_file,
             "-p", str(port),
             f"root@{host}",
-            f"nohup {self.resume_cmd} > /workspace/resume_output.log 2>&1 &"
+            f"nohup {self.resume_cmd} > /workspace/spotwarp_resume.log 2>&1 &"
         ]
         try:
-            subprocess.Popen(ssh_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("[Handover] Resume command launched successfully in remote background.")
+            safe_popen_subp(ssh_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print("[Handover] Training resume script successfully launched in background.")
         except Exception as e:
-            print(f"[-] Handover failed to launch resume command: {e}")
+            print(f"[-] Handover failed: {e}")
 
-    def _search_vast_candidates(self, match_token: str, exclude_host_id=None):
-        """Searches Vast.ai for rentable offers matching a GPU model token.
-
-        Shared by handle_failover (finding a replacement for an eviction)
-        and check_runpod_failback (checking whether a cheaper Vast slot has
-        opened up for an instance currently parked on RunPod) — extracted
-        2026-08-09 so both call sites stay in sync instead of drifting.
+    def _search_vast_candidates(self, evicted_gpu: str, evicted_vram: int = 0, evicted_num_gpus: int = 1, exclude_host_id=None):
+        """Searches Vast.ai for rentable offers strictly matching the EXACT same GPU model name,
+        exact form factor (SXM4, SXM5, PCIE, NVL), exact VRAM capacity, and GPU count.
+        Guarantees that ANY GPU workload (A100, H100, 5090, 4090, V100, etc.) is replaced
+        with 100% identical hardware specifications.
         """
-        # limit=200 (previous value) silently broke failover for any GPU tier
-        # pricier than mid-range: live-testing found the query returns the
-        # N globally cheapest offers across ALL models before our own
-        # gpu_name filtering runs, and premium tiers (H100 etc.) don't crack
-        # the top 200 cheapest listings on the entire marketplace — every
-        # single one got filtered out, so a customer training on an H100 got
-        # "no rentable alternative found" on every real eviction, 100% of
-        # the time. The whole marketplace is ~2,500 listings; 5000 comfortably
-        # covers it without needing a per-GPU-model exact-name whitelist that
-        # would need updating every time Vast adds a new card.
         q = {"rentable": {"eq": True}, "order": [["dph_total", "asc"]], "limit": 5000}
-
-        # Collect every matching offer (cheapest first), not just the single
-        # cheapest one — a dead/unresponsive host on the first pick shouldn't
-        # end the whole failover attempt.
-        #
-        # "laptop"-suffixed listings (individual gaming laptops rented out,
-        # not dedicated desktop/server cards) were live-testing verified to
-        # be disproportionately unreliable — every dead-on-arrival host hit
-        # during live testing was a "laptop" listing, while ordinary
-        # (non-laptop) cards of the same model booted every time. They're
-        # usually also not meaningfully cheaper, so excluding them costs
-        # little and removes the biggest observed source of failed replacements.
-        #
-        # 'deverified' hosts (failed Vast's own re-verification) were live-
-        # tested 2026-08-12 and confirmed real: one such host produced 4/4
-        # SSH connection failures across separate attempts and, separately,
-        # billed $4.90 in bandwidth for a fresh (uncached) image pull on an
-        # instance that was destroyed within minutes for never becoming
-        # reachable — a real customer would eat that same surprise charge
-        # on an evicted-and-immediately-replaced candidate. Excluding
-        # non-'verified' hosts here removes that failure mode at the source.
         candidate_offers = []
         try:
             r_query = requests.get('https://cloud.vast.ai/api/v0/bundles/', params={'q': json.dumps(q)}, headers=self.headers, timeout=15)
             if r_query.status_code == 200:
                 offers = r_query.json().get('offers', [])
-                candidate_offers = [
-                    o for o in offers
-                    if match_token in o.get('gpu_name', '').lower()
-                    and 'laptop' not in o.get('gpu_name', '').lower()
-                    and o.get('host_id') != exclude_host_id
-                    and o.get('verification') == 'verified'
-                ]
-        except Exception:
-            pass
+                clean_evicted = (evicted_gpu or "").strip().lower()
+                for prefix in ["1x ", "2x ", "4x ", "8x "]:
+                    if clean_evicted.startswith(prefix):
+                        clean_evicted = clean_evicted[len(prefix):].strip()
+
+                strict_offers = []
+                for o in offers:
+                    o_gpu = (o.get('gpu_name') or '').strip().lower()
+                    for prefix in ["1x ", "2x ", "4x ", "8x "]:
+                        if o_gpu.startswith(prefix):
+                            o_gpu = o_gpu[len(prefix):].strip()
+
+                    o_vram = o.get('gpu_ram', 0)
+                    o_num = o.get('num_gpus', 1)
+                    o_host = o.get('host_id')
+                    o_verif = o.get('verification')
+
+                    if o_host == exclude_host_id or o_verif != 'verified' or 'laptop' in o_gpu:
+                        continue
+                    if o_num != evicted_num_gpus:
+                        continue
+                    # Exact GPU Name Match (e.g. 'a100 sxm4' == 'a100 sxm4', 'rtx 5090' == 'rtx 5090')
+                    if clean_evicted != o_gpu and clean_evicted not in o_gpu and o_gpu not in clean_evicted:
+                        continue
+                    # Exact VRAM Match (>= 95% of original VRAM capacity)
+                    if evicted_vram > 0 and o_vram < (evicted_vram * 0.95):
+                        continue
+
+                    strict_offers.append(o)
+
+                if strict_offers:
+                    print(f"[*] Found {len(strict_offers)} STRICT 1:1 spec-matched offers ({evicted_gpu}, VRAM >= {evicted_vram}MB).")
+                    return strict_offers
+                else:
+                    print(f"[-] No Vast.ai offers strictly matching '{evicted_gpu}' with VRAM >= {evicted_vram}MB.")
+                    return []
+
+        except Exception as e:
+            print(f"[!] Error searching Vast offers: {e}")
         return candidate_offers
 
     def _race_rent_vast_candidates(self, candidate_offers):
-        """Races up to RACE_SIZE Vast.ai candidate offers concurrently and
-        returns (new_id, new_host, new_port, new_inst) for the cheapest one
-        that becomes SSH-reachable, or None if none did.
-
-        Extracted 2026-08-09 from handle_failover so the same racing-rental
-        mechanics can also drive check_runpod_failback's migration back from
-        RunPod to Vast — this function only rents+verifies; the caller is
-        responsible for restore_backup/start_backup_sync/cleanup, since
-        those differ between "replacing an eviction" and "failing back from
-        RunPod."
+        """Races up to RACE_SIZE (4) Vast.ai candidate offers concurrently.
+        When the first candidate becomes SSH-ready, waits exactly 15 seconds.
+        If multiple candidates succeed within 15s, keeps the cheapest one.
+        Immediately destroys ALL other candidates (whether loser, creating, or loading).
         """
         RACE_SIZE = 4
-        BOOT_TIMEOUT_SECONDS = 300
-        SSH_CHECK_TIMEOUT_SECONDS = 60
+        BOOT_TIMEOUT_SECONDS = 180
+        SSH_CHECK_TIMEOUT_SECONDS = 45
         GRACE_PERIOD_SECONDS = 15
 
+        all_rented_lock = threading.Lock()
+        all_rented = {}  # attempt_id -> {'attempt_num': i, 'cleanup': fn, 'price': price}
+
         ready_lock = threading.Lock()
-        ready = []  # candidates that reached SSH-ready, awaiting the decision
-        decision_made = threading.Event()
+        ready = []       # list of {'attempt_num': i, 'id': id, 'inst': inst, 'host': host, 'port': port, 'price': price}
+        first_ready_event = threading.Event()
+        race_over_event = threading.Event()
         winner = {}
 
-        def decide():
-            with ready_lock:
-                if decision_made.is_set() or not ready:
-                    return
-                best = min(ready, key=lambda r: r['price'])
-                winner['id'] = best['id']
-                winner['inst'] = best['inst']
-                winner['host'] = best['host']
-                winner['port'] = best['port']
-                decision_made.set()
-                for r in ready:
-                    if r is not best:
-                        print(f"[i] Candidate {r['attempt_num']}: SSH-ready at ${r['price']:.3f}/hr but not the cheapest of the group (winner: ${best['price']:.3f}/hr) — destroying.")
-                        r['cleanup']()
-                print(f"[+] Candidate {best['attempt_num']} WON the race — cheapest reachable offer at ${best['price']:.3f}/hr ({best['host']}:{best['port']}).")
+        def destroy_candidate(cid):
+            try:
+                requests.delete(f"https://console.vast.ai/api/v0/instances/{cid}/", headers=self.headers, timeout=15)
+            except Exception:
+                pass
 
         def race_one(attempt_num, offer):
             offer_id = offer['id']
@@ -548,24 +551,8 @@ class GpuActionGuard:
             payload = {
                 "template_hash_id": TEMPLATE_HASH_ID,
                 "disk": 20,
-                "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
+                "runtype": "ssh_direct",
                 "label": "spotwarp-failover-replacement",
-                # Confirmed via live testing: with this pytorch image, Vast's
-                # ssh_direct runtype alone does not reliably start sshd (a
-                # bare ubuntu image worked fine under the same runtype, so
-                # this image's own entrypoint isn't being fully replaced).
-                # Belt-and-suspenders: explicitly start sshd ourselves.
-                #
-                # Second bug found live-testing A100/H100 tiers specifically
-                # (2026-08-06, not present on the RTX 3060/3090 tiers tested
-                # earlier): on these hosts' Ubuntu 24.04 base image, Vast's
-                # own key-injection writes /root/.ssh/authorized_keys with
-                # permissions sshd's StrictModes rejects ("bad ownership or
-                # modes"), even though the key content itself is correct —
-                # every connection attempt failed "Permission denied
-                # (publickey)" despite the right key being present. Loop-wait
-                # for the file to appear (Vast's injection is asynchronous
-                # relative to our onstart), then fix its permissions.
                 "onstart": (
                     "for i in $(seq 1 60); do "
                     "if [ -f /root/.ssh/authorized_keys ]; then "
@@ -587,178 +574,140 @@ class GpuActionGuard:
             attempt_id = rent_r.json().get('new_contract') or rent_r.json().get('id')
             print(f"[+] Candidate {attempt_num}: rented replacement, Instance ID: {attempt_id}")
 
-            def cleanup():
-                try:
-                    requests.delete(f"https://console.vast.ai/api/v0/instances/{attempt_id}/", headers=self.headers, timeout=15)
-                except Exception:
-                    pass
+            with all_rented_lock:
+                all_rented[attempt_id] = {
+                    'attempt_num': attempt_num,
+                    'cleanup': lambda cid=attempt_id: destroy_candidate(cid),
+                    'price': price,
+                }
 
-            # Renting via this API endpoint does NOT auto-attach the
-            # account's SSH key the way renting through the website does —
-            # without this, the replacement boots with no authorized key
-            # and every SSH/rsync/scp attempt fails with "Permission
-            # denied (publickey)", silently defeating the whole point of
-            # failover (nothing to restore data to).
+            # Attach SSH key
             try:
                 acct_r = requests.get('https://console.vast.ai/api/v0/users/current/', headers=self.headers, timeout=15)
                 account_ssh_key = acct_r.json().get('ssh_key') if acct_r.status_code == 200 else None
                 if account_ssh_key:
-                    key_r = requests.post(
+                    requests.post(
                         f"https://console.vast.ai/api/v0/instances/{attempt_id}/ssh/",
                         json={"ssh_key": account_ssh_key}, headers=self.headers, timeout=15
                     )
-                    if key_r.status_code != 200:
-                        print(f"[!] Candidate {attempt_num}: failed to attach SSH key: {key_r.text}")
-                else:
-                    print(f"[!] Candidate {attempt_num}: no SSH key registered on this Vast.ai account — replacement may be unreachable.")
-            except Exception as e:
-                print(f"[!] Candidate {attempt_num}: error attaching SSH key: {e}")
+            except Exception:
+                pass
 
-            # Wait for this candidate to boot. Checked every 5s instead of the
-            # old 15s — several tiers live-tested 2026-08-07 (V100, H200,
-            # B200) actually finished booting in well under a minute, so a
-            # coarser poll interval was pure added latency on top of an
-            # already-healthy host, not a meaningful cost saving.
+            # Poll until boot or race over
             attempt_start = time.time()
             attempt_running = False
             attempt_inst = None
-            while time.time() - attempt_start < BOOT_TIMEOUT_SECONDS:
-                if decision_made.is_set():
-                    print(f"[i] Candidate {attempt_num}: the race already decided — abandoning.")
-                    cleanup()
+            while (time.time() - attempt_start < BOOT_TIMEOUT_SECONDS) and not race_over_event.is_set():
+                time.sleep(4)
+                if race_over_event.is_set():
                     return
-                time.sleep(5)
                 try:
                     r_check = requests.get('https://console.vast.ai/api/v1/instances/', headers=self.headers, timeout=15)
+                    if r_check.status_code == 200:
+                        instances = r_check.json().get('instances', [])
+                        attempt_inst = next((i for i in instances if i['id'] == attempt_id), None)
+                        if attempt_inst:
+                            status = attempt_inst.get('actual_status')
+                            cur_state = attempt_inst.get('cur_state')
+                            ssh_ready = bool((attempt_inst.get('ports') or {}).get('22/tcp'))
+                            if status == "running" and cur_state == "running" and ssh_ready:
+                                attempt_running = True
+                                break
                 except Exception:
                     continue
-                if r_check.status_code == 200:
-                    instances = r_check.json().get('instances', [])
-                    attempt_inst = next((i for i in instances if i['id'] == attempt_id), None)
-                    if attempt_inst:
-                        status = attempt_inst.get('actual_status')
-                        cur_state = attempt_inst.get('cur_state')
-                        # Requiring the literal word "jupyter" in status_msg
-                        # was live-testing verified to be wrong: current Vast
-                        # images report e.g. "success, running
-                        # vastai/pytorch_cuda-13.2.1-auto/ssh" with no
-                        # "jupyter" substring at all, even once fully booted
-                        # and SSH-reachable. What we actually need (we
-                        # connect over SSH, not Jupyter) is the SSH port
-                        # mapping.
-                        ssh_ready = bool((attempt_inst.get('ports') or {}).get('22/tcp'))
-                        if status == "running" and cur_state == "running" and ssh_ready:
-                            attempt_running = True
-                            break
 
-            if not attempt_running:
-                print(f"[-] Candidate {attempt_num}: boot timed out — destroying.")
-                cleanup()
+            if not attempt_running or race_over_event.is_set():
                 return
 
-            # Boot status "running" is necessary but not sufficient: live
-            # testing 2026-08-07 hit real replacements Vast reported as
-            # "running, sshd started" that were actually unreachable — one
-            # had a private-range public_ipaddr (now handled by
-            # get_ssh_endpoint's _is_private_ip check), another's SSH port
-            # just timed out (dead network path on that specific host,
-            # nothing wrong with our request). Verify SSH reachability
-            # before this candidate can win the race.
             candidate_host, candidate_port = get_ssh_endpoint(attempt_inst)
             null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
             print(f"[*] Candidate {attempt_num}: boot confirmed, verifying SSH to root@{candidate_host}:{candidate_port}...")
 
             ssh_start = time.time()
             connection_success = False
-            while time.time() - ssh_start < SSH_CHECK_TIMEOUT_SECONDS:
-                if decision_made.is_set():
-                    print(f"[i] Candidate {attempt_num}: the race already decided — abandoning.")
-                    cleanup()
-                    return
+            while (time.time() - ssh_start < SSH_CHECK_TIMEOUT_SECONDS) and not race_over_event.is_set():
                 try:
-                    ssh_check = subprocess.run(
+                    ssh_check = safe_run_subp(
                         ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=" + null_file,
-                         "-o", "ConnectTimeout=5", "-p", str(candidate_port), f"root@{candidate_host}", "echo ok"],
-                        capture_output=True, text=True, timeout=10
+                         "-o", "ConnectTimeout=4", "-p", str(candidate_port), f"root@{candidate_host}", "echo ok"],
+                        capture_output=True, text=True, timeout=8
                     )
                     if ssh_check.returncode == 0 and "ok" in ssh_check.stdout:
                         connection_success = True
                         break
                 except Exception:
                     pass
-                time.sleep(3)
+                time.sleep(2)
 
-            if not connection_success:
-                print(f"[-] Candidate {attempt_num}: SSH never became reachable — destroying.")
-                cleanup()
-                return
+            if connection_success and not race_over_event.is_set():
+                with ready_lock:
+                    ready.append({
+                        'attempt_num': attempt_num, 'id': attempt_id, 'inst': attempt_inst,
+                        'host': candidate_host, 'port': candidate_port, 'price': price,
+                    })
+                    first_ready_event.set()
+                print(f"[+] Candidate {attempt_num}: SSH-ready at ${price:.3f}/hr, joined decision pool.")
 
-            with ready_lock:
-                if decision_made.is_set():
-                    print(f"[i] Candidate {attempt_num}: SSH-ready but the race already closed — destroying.")
-                    cleanup()
-                    return
-                is_first = not ready
-                ready.append({
-                    'attempt_num': attempt_num, 'id': attempt_id, 'inst': attempt_inst,
-                    'host': candidate_host, 'port': candidate_port, 'price': price,
-                    'cleanup': cleanup,
-                })
-            print(f"[+] Candidate {attempt_num}: SSH-ready at ${price:.3f}/hr, joining the decision pool.")
-
-            # Only the first candidate to arrive drives the grace-period wait
-            # and makes the call — everyone else (whether they arrive later
-            # and join the pool, or fail outright) is done as soon as they've
-            # reported in. decide() destroys every non-winner in `ready`,
-            # including this thread's own candidate if a cheaper one shows up.
-            if is_first:
-                print(f"[*] Candidate {attempt_num}: first reachable — holding the race open {GRACE_PERIOD_SECONDS}s for cheaper candidates to catch up.")
-                time.sleep(GRACE_PERIOD_SECONDS)
-                decide()
-
+        # Launch 4 parallel racing threads
         threads = [threading.Thread(target=race_one, args=(i, offer), daemon=True)
                    for i, offer in enumerate(candidate_offers[:RACE_SIZE], start=1)]
         for t in threads:
             t.start()
-        for t in threads:
-            t.join()
+
+        # Wait for the FIRST candidate to become SSH-ready (or timeout)
+        got_first = first_ready_event.wait(timeout=BOOT_TIMEOUT_SECONDS)
+
+        if got_first:
+            print(f"[*] First candidate ready! Holding race open for {GRACE_PERIOD_SECONDS}s for cheaper candidates to catch up...")
+            time.sleep(GRACE_PERIOD_SECONDS)
+
+            # Race is officially OVER
+            race_over_event.set()
+
+            with ready_lock:
+                if ready:
+                    best = min(ready, key=lambda r: r['price'])
+                    winner['id'] = best['id']
+                    winner['inst'] = best['inst']
+                    winner['host'] = best['host']
+                    winner['port'] = best['port']
+                    print(f"[🏆 WINNER] Candidate {best['attempt_num']} (ID: {best['id']}) WON! Price: ${best['price']:.3f}/hr ({best['host']}:{best['port']})")
+        else:
+            race_over_event.set()
+            print("[-] All candidates timed out without achieving SSH connectivity.")
+
+        # IMMEDIATELY DESTROY ALL OTHER CANDIDATES (all losers, creating, loading, etc.)
+        with all_rented_lock:
+            destroy_threads = []
+            for cid, cinfo in list(all_rented.items()):
+                if cid != winner.get('id'):
+                    print(f"[x] Auto-destroying non-winning candidate {cinfo['attempt_num']} (ID: {cid}, still creating/loading/loser)...")
+                    dt = threading.Thread(target=cinfo['cleanup'], daemon=True)
+                    destroy_threads.append(dt)
+                    dt.start()
+
+            for dt in destroy_threads:
+                dt.join(timeout=10)
 
         if 'id' not in winner:
             return None
         return (winner['id'], winner['host'], winner['port'], winner['inst'])
 
-    def handle_failover(self, evicted_id: int, evicted_host_id: int, evicted_gpu: str):
-        """Triggers replacement renting, data restoration, and connection handover."""
-        print(f"\n[🚨 FAILOVER TRIGGERED] Instance {evicted_id} (Host {evicted_host_id}) has been evicted!")
+
+    def handle_failover(self, evicted_id: int, evicted_host_id: int, evicted_gpu: str, evicted_vram: int = 0, evicted_num_gpus: int = 1):
+        """Triggers replacement renting, data restoration, and connection handover with exact VRAM/Spec matching."""
+        print(f"\n[🚨 FAILOVER TRIGGERED] Instance {evicted_id} (Host {evicted_host_id}) has been evicted! (Spec: {evicted_gpu}, VRAM: {evicted_vram}MB, GPUs: {evicted_num_gpus})")
         
         if hasattr(self, 'total_failovers'):
             self.total_failovers += 1
             
         self.stop_backup_sync(evicted_id)
 
-        # Match the replacement to the GPU model that was actually evicted,
-        # instead of always hunting for an RTX 3090 (a user who was training
-        # on an H100/A100 shouldn't get silently downgraded).
-        KNOWN_MODELS = [
-            "h100", "h200", "a100", "a6000", "a5000", "a4000", "l40s", "l40",
-            "l4", "v100", "4090", "3090", "4080", "3080"
-        ]
-        evicted_gpu_lower = (evicted_gpu or "").lower()
-        match_token = next((m for m in KNOWN_MODELS if m in evicted_gpu_lower), None)
-        if not match_token and evicted_gpu_lower and evicted_gpu_lower != "unknown":
-            match_token = evicted_gpu_lower
-        if not match_token:
-            match_token = "3090"
-            print(f"[!] Evicted GPU type unknown — defaulting search to RTX 3090 as a safe budget fallback.")
-
-        print(f"[*] Finding cheapest alternative matching '{match_token}' on Vast.ai...")
-        candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=evicted_host_id)
+        print(f"[*] Finding exact/equivalent replacement for '{evicted_gpu}' (VRAM >= {evicted_vram}MB) on Vast.ai...")
+        candidate_offers = self._search_vast_candidates(evicted_gpu, evicted_vram=evicted_vram, evicted_num_gpus=evicted_num_gpus, exclude_host_id=evicted_host_id)
 
         if not candidate_offers:
-            print(f"[-] No rentable alternative matching '{match_token}' found on Vast.ai.")
-            # FALLBACK TO RUNPOD — included for every SpotWarp license, no
-            # tier-gating. (회장님 2026-08-09: single flat price per
-            # license, not per-feature tiers — see plan history below.)
+            print(f"[-] No rentable alternative matching '{evicted_gpu}' (VRAM >= {evicted_vram}MB) found on Vast.ai.")
             if self.runpod_api_key:
                 print("[*] Falling back to RunPod for cross-cloud replacement...")
                 try:
@@ -766,20 +715,11 @@ class GpuActionGuard:
                     from runpod_connector import RunPodGPUConnector
                     rp_client = RunPodGPUConnector(api_key=self.runpod_api_key)
 
-                    # Request a RunPod spot Pod matching the evicted GPU type
-                    # where possible. RunPod's REST API requires an exact
-                    # gpuTypeIds enum string (e.g. "NVIDIA GeForce RTX 4090"),
-                    # not the free-form name Vast reports (e.g. "RTX 4090") —
-                    # live-testing 2026-08-09 confirmed passing the raw Vast
-                    # name straight through gets a 400 validation error on
-                    # every request, so every real RunPod fallback would have
-                    # failed at the rental step. Map the same match_token
-                    # already computed above for the Vast search to RunPod's
-                    # exact naming.
                     RUNPOD_GPU_MAP = {
                         "h100": "NVIDIA H100 80GB HBM3",
                         "h200": "NVIDIA H200",
                         "a100": "NVIDIA A100 80GB PCIe",
+                        "5090": "NVIDIA GeForce RTX 5090",
                         "a6000": "NVIDIA RTX A6000",
                         "a5000": "NVIDIA RTX A5000",
                         "a4000": "NVIDIA RTX A4000",
@@ -792,7 +732,9 @@ class GpuActionGuard:
                         "4080": "NVIDIA GeForce RTX 4080",
                         "3080": "NVIDIA GeForce RTX 3080",
                     }
-                    runpod_gpu_type = RUNPOD_GPU_MAP.get(match_token, "NVIDIA GeForce RTX 3090")
+                    clean_gpu = (evicted_gpu or "").lower()
+                    matched_key = next((k for k in RUNPOD_GPU_MAP if k in clean_gpu), "3090")
+                    runpod_gpu_type = RUNPOD_GPU_MAP.get(matched_key, "NVIDIA GeForce RTX 3090")
                     res = rp_client.request_gpu_spot_pod(gpu_type=runpod_gpu_type)
                     if res:
                         new_id = f"runpod_{res['pod_id']}"
@@ -800,19 +742,12 @@ class GpuActionGuard:
                         new_port = res['ssh_port']
 
                         print(f"[+] Successfully rented RunPod replacement! Pod ID: {res['pod_id']}")
-
-                        # Step 1: Connection verification via real SSH — live
-                        # testing 2026-08-09 confirmed the old Jupyter-HTTP-API
-                        # check (same design flaw already fixed on the Vast
-                        # path in 3.1.1) times out on a freshly-rented RunPod
-                        # pod even when SSH is fully reachable and healthy,
-                        # so it always reported the failover as failed.
                         null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
                         connection_success = False
                         print(f"[*] Verifying SSH connection to RunPod replacement {new_host}:{new_port}...")
                         for attempt in range(1, 13):
                             try:
-                                r_ssh = subprocess.run(
+                                r_ssh = safe_run_subp(
                                     ["ssh", "-p", str(new_port),
                                      "-o", "StrictHostKeyChecking=no",
                                      "-o", f"UserKnownHostsFile={null_file}",
@@ -828,34 +763,24 @@ class GpuActionGuard:
                                 pass
                             time.sleep(5)
 
-                        # Step 2: Migrate files to RunPod container (only once reachable)
                         if connection_success:
-                            self.restore_backup(evicted_id, new_id, new_host, new_port)
+                            self.runpod_parked[new_id] = {
+                                "host": new_host,
+                                "port": new_port,
+                                "match_token": clean_gpu,
+                                "runpod_pod_id": res['pod_id'],
+                            }
+                            print(f"[i] Parked {new_id} on RunPod — will auto-migrate back to Vast.ai once a candidate reappears.")
 
-                        # Step 3: Start backup sync for new RunPod instance
-                        self.start_backup_sync(new_id, new_host, new_port)
+                            print(f"[*] Cleaning up. Destroying evicted primary Vast instance {evicted_id}...")
+                            requests.delete(f"https://console.vast.ai/api/v0/instances/{evicted_id}/", headers=self.headers, timeout=15)
 
-                        # RunPod is materially more expensive than Vast spot
-                        # pricing — this instance should be a temporary safety
-                        # net, not a permanent home. Park it so the guard loop
-                        # keeps re-checking Vast for '{match_token}' and
-                        # migrates back automatically the moment a candidate
-                        # reappears (see check_runpod_failback).
-                        self.runpod_parked[new_id] = {
-                            "host": new_host,
-                            "port": new_port,
-                            "match_token": match_token,
-                            "runpod_pod_id": res['pod_id'],
-                        }
-                        print(f"[i] Parked {new_id} on RunPod — will auto-migrate back to Vast.ai once a '{match_token}' candidate reappears.")
-
-                        # Clean up evicted Vast instance
-                        print(f"[*] Cleaning up. Destroying evicted primary Vast instance {evicted_id}...")
-                        requests.delete(f"https://console.vast.ai/api/v0/instances/{evicted_id}/", headers=self.headers, timeout=15)
-
-                        if self.resume_cmd:
-                            self.execute_resume_command(new_host, new_port)
-                        return
+                            restored = self.restore_backup(evicted_id, new_id, new_host, new_port)
+                            if restored:
+                                self.start_backup_sync(new_id, new_host, new_port)
+                                if self.resume_cmd:
+                                    self.execute_resume_command(new_host, new_port)
+                            return
                 except Exception as rp_err:
                     print(f"[-] RunPod failover fallback failed: {rp_err}")
             return
@@ -1013,7 +938,7 @@ class GpuActionGuard:
                     requests.post(
                         f"{CENTRAL_SERVER}/api/v1/update_status",
                         json=payload,
-                        headers={"User-Agent": "SpotWarp-Guard/3.2"},
+                        headers={"User-Agent": f"SpotWarp-Guard/{VERSION}"},
                         timeout=5
                     )
                 except Exception:
@@ -1030,7 +955,7 @@ class GpuActionGuard:
     def run_guard_loop(self):
         """Main Failover Guard loop: Monitored 24/7 on client machine."""
         print("==================================================")
-        print("⚡ SpotWarp: Spot-Instance Failover Guard v3.2")
+        print(f"⚡ SpotWarp: Spot-Instance Failover Guard v{VERSION}")
         print("==================================================")
         print("Security Guarantee: Your API keys stay 100% local.")
         print("==================================================")
@@ -1061,36 +986,26 @@ class GpuActionGuard:
                 host, port = get_ssh_endpoint(inst)
                 host_id = inst.get('host_id')
                 gpu_name = inst.get('gpu_name', 'Unknown')
-                self.tracked_instances[inst_id] = (host, port, host_id, gpu_name)
-                print(f"[Tracked] Monitoring active instance: {inst_id} (Host {host_id}, GPU: {gpu_name})")
+                gpu_ram = inst.get('gpu_ram', 0)
+                num_gpus = inst.get('num_gpus', 1)
+                self.tracked_instances[inst_id] = (host, port, host_id, gpu_name, gpu_ram, num_gpus)
+                print(f"[Tracked] Monitoring active instance: {inst_id} (Host {host_id}, GPU: {gpu_name}, VRAM: {gpu_ram}MB, Count: {num_gpus})")
                 self.start_backup_sync(inst_id, host, port)
 
         try:
             while True:
-                # 10s (previous value) put an extra 0-10s of pure polling lag
-                # in front of every failover, before handle_failover even
-                # starts — on top of the boot/SSH latency that function
-                # itself already tightened 2026-08-08. 5s halves the worst
-                # case for the same reason those other intervals were
-                # tightened: this is our own detection cadence, not a
-                # Vast/host-side delay, so shortening it is free except for
-                # doubling the frequency of a single lightweight read-only
-                # /instances/ status call — negligible for one account's own
-                # monitoring script.
                 time.sleep(5)
                 res = self.check_vast_status()
                 if res.get("status") == "ok":
                     current_instances = res.get("instances", [])
                     
-                    for tracked_id, (host, port, host_id, tracked_gpu_name) in list(self.tracked_instances.items()):
+                    for tracked_id, (host, port, host_id, tracked_gpu_name, tracked_vram, tracked_num_gpus) in list(self.tracked_instances.items()):
                         matching_inst = next((i for i in current_instances if i['id'] == tracked_id), None)
                         if not matching_inst or matching_inst.get('actual_status') != 'running':
-                            # Prefer the live gpu_name if Vast still reports the
-                            # instance; fall back to what we recorded when we
-                            # started tracking it, since an evicted instance
-                            # often disappears from the listing entirely.
                             gpu_name = matching_inst.get('gpu_name', tracked_gpu_name) if matching_inst else tracked_gpu_name
-                            self.handle_failover(tracked_id, host_id, gpu_name)
+                            gpu_ram = matching_inst.get('gpu_ram', tracked_vram) if matching_inst else tracked_vram
+                            num_gpus = matching_inst.get('num_gpus', tracked_num_gpus) if matching_inst else tracked_num_gpus
+                            self.handle_failover(tracked_id, host_id, gpu_name, gpu_ram, num_gpus)
                             del self.tracked_instances[tracked_id]
 
                     for inst in current_instances:
@@ -1098,8 +1013,10 @@ class GpuActionGuard:
                         if inst_id not in self.tracked_instances and inst.get('actual_status') == 'running':
                             host, port = get_ssh_endpoint(inst)
                             gpu_name = inst.get('gpu_name', 'Unknown')
-                            self.tracked_instances[inst_id] = (host, port, inst.get('host_id'), gpu_name)
-                            print(f"\n[Tracked] Found new active instance: {inst_id} (Host {inst.get('host_id')}, GPU: {gpu_name})")
+                            gpu_ram = inst.get('gpu_ram', 0)
+                            num_gpus = inst.get('num_gpus', 1)
+                            self.tracked_instances[inst_id] = (host, port, inst.get('host_id'), gpu_name, gpu_ram, num_gpus)
+                            print(f"\n[Tracked] Found new active instance: {inst_id} (Host {inst.get('host_id')}, GPU: {gpu_name}, VRAM: {gpu_ram}MB, Count: {num_gpus})")
                             self.start_backup_sync(inst_id, host, port)
 
                     self.check_runpod_failback()
@@ -1119,7 +1036,7 @@ class GpuActionGuard:
                 self.reporting_thread.join(timeout=3)
             print("[SpotWarp Guard] Guard daemon stopped gracefully.")
 
-VERSION = "3.3.2"
+VERSION = "3.3.3"
 CONFIG_DIR = os.path.expanduser("~/.spotwarp")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
@@ -1382,6 +1299,32 @@ def main():
         daemon_mode = getattr(args, "daemon", False)
 
         if daemon_mode:
+            # Single-Instance Guard Check to prevent duplicate daemons
+            if os.path.exists(PID_FILE):
+                try:
+                    with open(PID_FILE, "r", encoding="utf-8") as f:
+                        old_pid = int(f.read().strip())
+                    is_running = False
+                    if sys.platform == 'win32':
+                        import ctypes
+                        k = ctypes.windll.kernel32
+                        h = k.OpenProcess(0x1000, False, old_pid)
+                        if h:
+                            k.CloseHandle(h)
+                            is_running = True
+                    else:
+                        try:
+                            os.kill(old_pid, 0)
+                            is_running = True
+                        except OSError:
+                            pass
+                    if is_running:
+                        print(f"⚠️  [SpotWarp Guard] Daemon is ALREADY active (PID: {old_pid}).")
+                        print("   Use 'spotwarp stop' before starting a new instance.")
+                        return
+                except Exception:
+                    pass
+
             os.makedirs(CONFIG_DIR, exist_ok=True)
             cmd = [sys.executable, "-u", os.path.abspath(__file__), "start",
                    "--license-key", lic,
@@ -1399,6 +1342,7 @@ def main():
                     proc = subprocess.Popen(cmd, stdout=out, stderr=out, creationflags=DETACHED_PROCESS)
                 else:
                     proc = subprocess.Popen(cmd, stdout=out, stderr=out, start_new_session=True)
+
 
             with open(PID_FILE, "w", encoding="utf-8") as f:
                 f.write(str(proc.pid))

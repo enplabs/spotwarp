@@ -1,4 +1,4 @@
-# Standard AI/ML developer runtime image
+# SpotWarp v3.3.3 Production Docker Environment
 FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
 
 # Install system dependencies

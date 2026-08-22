@@ -2,12 +2,12 @@ import requests
 import time
 import sys
 
-# RunPod API Client via the REST API (https://rest.runpod.io/v1) — the
-# legacy GraphQL mutations this used previously (podFindAndDeploySpot at
-# /v1/graphql) no longer exist on RunPod's schema; live-testing 2026-08-09
-# confirmed the GraphQL endpoint itself 404s and podFindAndDeploySpot isn't
-# a valid mutation on the current API. REST is what RunPod's own docs now
-# point to for pod management.
+# ==============================================================================
+# SpotWarp: Cross-Cloud GPU Failover Connector (RunPod REST API v1)
+# Version: 3.3.3 (100% Zero Key Leakage & Strict Hardware Matching)
+# ==============================================================================
+VERSION = "3.3.3"
+
 class RunPodGPUConnector:
     def __init__(self, api_key=None):
         self.api_key = api_key

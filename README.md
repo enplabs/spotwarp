@@ -1,6 +1,6 @@
 # ⚡ SpotWarp: Never Lose a Training Run to a Spot GPU Eviction
 
-[![PyPI Version](https://img.shields.io/badge/pypi-v3.3.2-blue.svg)](https://pypi.org/project/spotwarp/)
+[![PyPI Version](https://img.shields.io/badge/pypi-v3.3.3-blue.svg)](https://pypi.org/project/spotwarp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Security: Audited](https://img.shields.io/badge/Security-Zero--Key--Leakage-green.svg)](https://gpu-action.com)
 
@@ -16,7 +16,7 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ## 🆚 Spot GPU Eviction: Standard vs. SpotWarp
 
-| Feature | Standard Spot Instance | With SpotWarp (v3.3.2) |
+| Feature | Standard Spot Instance | With SpotWarp (v3.3.3) |
 | :--- | :--- | :--- |
 | **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
 | **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement in under a minute. |

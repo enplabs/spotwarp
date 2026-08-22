@@ -418,6 +418,220 @@
             border-color: var(--accent-orange);
             outline: none;
         }
+
+        /* Calculator Section Styles */
+        .calculator-section {
+            padding: 50px 0 70px;
+            position: relative;
+        }
+
+        .calc-wrapper {
+            background: rgba(13, 17, 23, 0.95);
+            border: 1px solid rgba(249, 115, 22, 0.35);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 35px rgba(249, 115, 22, 0.15);
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 40px;
+            margin-top: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @media (max-width: 900px) {
+            .calc-wrapper {
+                grid-template-columns: 1fr;
+                padding: 24px;
+                gap: 30px;
+            }
+        }
+
+        .calc-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .calc-group {
+            margin-bottom: 26px;
+        }
+
+        .calc-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-bottom: 12px;
+        }
+
+        .calc-badge {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--accent-orange);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            padding: 2px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-family: monospace;
+        }
+
+        .gpu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .gpu-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .gpu-btn:hover {
+            border-color: rgba(249, 115, 22, 0.5);
+            color: white;
+            background: rgba(249, 115, 22, 0.08);
+        }
+
+        .gpu-btn.active {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.2));
+            border-color: var(--accent-orange);
+            color: white;
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.25);
+        }
+
+        .calc-slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #1f2937;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        .calc-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent-orange);
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.7);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .calc-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .quick-presets {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .preset-chip {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            color: #9ca3af;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-chip:hover {
+            border-color: var(--accent-cyan);
+            color: #e5e7eb;
+        }
+
+        /* Result ROI Card */
+        .roi-card {
+            background: rgba(17, 24, 39, 0.85);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            border-radius: 20px;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 0 35px rgba(16, 185, 129, 0.12);
+        }
+
+        .roi-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.92rem;
+        }
+
+        .cost-row.traditional {
+            color: #9ca3af;
+        }
+
+        .cost-row.traditional .amount {
+            text-decoration: line-through;
+            color: #ef4444;
+            font-weight: 700;
+        }
+
+        .cost-row.spotwarp {
+            color: #e5e7eb;
+            font-weight: 600;
+        }
+
+        .cost-row.spotwarp .amount {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
+
+        .savings-highlight {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.1));
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 14px;
+            padding: 18px;
+            text-align: center;
+            margin: 14px 0 20px;
+        }
+
+        .savings-amount {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: #10b981;
+            line-height: 1.1;
+            margin: 6px 0;
+            text-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .savings-pct {
+            font-size: 0.92rem;
+            color: #6ee7b7;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -430,6 +644,7 @@
                 Spot<span>Warp</span>
             </a>
             <div class="nav-links">
+                <a href="#calculator">Savings Calculator</a>
                 <a href="#pricing">Pricing</a>
                 <a href="/quickstart">Setup Guide</a>
                 <button class="btn-primary" onclick="openTrialModal()">14-Day Free Trial</button>
@@ -476,6 +691,140 @@
                 <button class="btn-primary" onclick="openTrialModal()" style="font-size: 1.1rem; padding: 16px 36px;">
                     Start 14-Day Free Trial <i class="fa-solid fa-arrow-right"></i>
                 </button>
+            </div>
+
+            <!-- 30s Live Terminal Failover Demo Animation -->
+            <div style="max-width: 880px; margin: 36px auto 10px; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.8), 0 0 35px rgba(249, 115, 22, 0.25); border: 1px solid rgba(255,255,255,0.15);">
+                <img src="/static/spotwarp_demo.gif" alt="SpotWarp 30s Terminal Failover Demo" style="width: 100%; height: auto; display: block;" loading="eager" />
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive GPU Cost Savings Calculator -->
+    <section id="calculator" class="calculator-section container">
+        <div style="text-align: center;">
+            <div class="badge" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: var(--accent-green);">
+                <i class="fa-solid fa-calculator"></i> Interactive ROI Estimator
+            </div>
+            <h2 style="font-size: 2.5rem; font-weight: 800; margin-top: 10px; letter-spacing: -0.5px;">Calculate Your GPU Cost Savings</h2>
+            <p style="color: var(--text-muted); max-width: 680px; margin: 8px auto 0; font-size: 1.05rem;">
+                See how much your team saves by switching from expensive on-demand cloud GPUs to reliable Spot instances guarded by SpotWarp.
+            </p>
+        </div>
+
+        <div class="calc-wrapper">
+            <!-- Left: Interactive Controls -->
+            <div class="calc-controls">
+                <!-- 1. GPU Architecture -->
+                <div class="calc-group">
+                    <div class="calc-label">
+                        <span><i class="fa-solid fa-microchip" style="color: var(--accent-orange); margin-right: 8px;"></i> 1. Select GPU Architecture</span>
+                        <span class="calc-badge" id="selectedGpuName">NVIDIA A100 80GB</span>
+                    </div>
+                    <div class="gpu-grid">
+                        <button class="gpu-btn" onclick="selectGpu('h100', this)">
+                            <div><b>H100 80GB</b></div>
+                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">SXM5 High-End</div>
+                        </button>
+                        <button class="gpu-btn active" onclick="selectGpu('a100', this)">
+                            <div><b>A100 80GB</b></div>
+                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">Industry Standard</div>
+                        </button>
+                        <button class="gpu-btn" onclick="selectGpu('rtx4090', this)">
+                            <div><b>RTX 4090</b></div>
+                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">24GB VRAM</div>
+                        </button>
+                        <button class="gpu-btn" onclick="selectGpu('l40s', this)">
+                            <div><b>L40S 48GB</b></div>
+                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">Inference / LoRA</div>
+                        </button>
+                        <button class="gpu-btn" onclick="selectGpu('rtx3090', this)">
+                            <div><b>RTX 3090</b></div>
+                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">Budget Worker</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. GPU Count -->
+                <div class="calc-group">
+                    <div class="calc-label">
+                        <span><i class="fa-solid fa-server" style="color: var(--accent-cyan); margin-right: 8px;"></i> 2. Number of GPUs</span>
+                        <span class="calc-badge" id="gpuCountDisplay">4 GPUs</span>
+                    </div>
+                    <input type="range" min="1" max="16" value="4" step="1" class="calc-slider" id="gpuCountSlider" oninput="updateCalculator()">
+                    <div class="quick-presets">
+                        <span class="preset-chip" onclick="setGpuCount(1)">1 GPU</span>
+                        <span class="preset-chip" onclick="setGpuCount(2)">2 GPUs</span>
+                        <span class="preset-chip" onclick="setGpuCount(4)">4 GPUs</span>
+                        <span class="preset-chip" onclick="setGpuCount(8)">8x Cluster</span>
+                        <span class="preset-chip" onclick="setGpuCount(16)">16x Fleet</span>
+                    </div>
+                </div>
+
+                <!-- 3. Usage Hours -->
+                <div class="calc-group">
+                    <div class="calc-label">
+                        <span><i class="fa-solid fa-clock" style="color: var(--accent-green); margin-right: 8px;"></i> 3. Weekly Training / Inference Hours</span>
+                        <span class="calc-badge" id="hoursDisplay">60 hrs / week</span>
+                    </div>
+                    <input type="range" min="10" max="168" value="60" step="5" class="calc-slider" id="hoursSlider" oninput="updateCalculator()">
+                    <div class="quick-presets">
+                        <span class="preset-chip" onclick="setHours(30)">Part-Time (30h)</span>
+                        <span class="preset-chip" onclick="setHours(60)">Standard Work (60h)</span>
+                        <span class="preset-chip" onclick="setHours(120)">Heavy Training (120h)</span>
+                        <span class="preset-chip" onclick="setHours(168)">24/7 Continuous (168h)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Real-time ROI Card -->
+            <div class="roi-card">
+                <div>
+                    <div class="roi-header">
+                        <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-orange); font-weight: 700; margin-bottom: 4px;">
+                            Estimated Monthly Breakdown
+                        </div>
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #fff;">
+                            Monthly Cloud Infrastructure Cost
+                        </div>
+                    </div>
+
+                    <div class="cost-row traditional">
+                        <span><i class="fa-brands fa-aws" style="margin-right: 6px;"></i> AWS / GCP On-Demand</span>
+                        <span class="amount" id="awsCostDisplay">$3,950 / mo</span>
+                    </div>
+
+                    <div class="cost-row spotwarp">
+                        <span><i class="fa-solid fa-bolt" style="color: var(--accent-orange); margin-right: 6px;"></i> SpotWarp + Vast/RunPod</span>
+                        <span class="amount" id="spotwarpCostDisplay">$1,244 / mo</span>
+                    </div>
+
+                    <div style="font-size: 0.75rem; color: #6b7280; text-align: right; margin-top: -6px; margin-bottom: 12px;">
+                        *Includes wholesale spot compute + $49/mo SpotWarp Pass
+                    </div>
+
+                    <div class="savings-highlight">
+                        <div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; color: #34d399;">
+                            Net Monthly Savings
+                        </div>
+                        <div class="savings-amount" id="savingsAmountDisplay">$2,706</div>
+                        <div class="savings-pct" id="savingsPctDisplay">You Save 68.5% of GPU Costs</div>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #9ca3af; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                        <span><i class="fa-solid fa-calendar-check" style="color: var(--accent-cyan); margin-right: 6px;"></i> Annual Projected Savings:</span>
+                        <b style="color: #10b981; font-size: 0.95rem;" id="annualSavingsDisplay">$32,472 / yr</b>
+                    </div>
+                </div>
+
+                <div>
+                    <button class="btn-primary" id="calcCtaBtn" style="width: 100%; justify-content: center; padding: 15px; font-size: 1rem;" onclick="openTrialModal()">
+                        Start 14-Day Free Trial & Save <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                    <div style="text-align: center; margin-top: 10px; font-size: 0.78rem; color: #9ca3af;">
+                        <i class="fa-solid fa-shield-halved" style="color: var(--accent-green);"></i> Continuous Local Backup & Eviction Guard Included
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -709,7 +1058,97 @@
             }
         }
 
+        // GPU Data & Cost Calculation
+        const GPU_PROFILES = {
+            'h100': {
+                name: 'NVIDIA H100 SXM5 80GB',
+                awsHourly: 4.20,
+                vastHourly: 1.85
+            },
+            'a100': {
+                name: 'NVIDIA A100 SXM4 80GB',
+                awsHourly: 3.80,
+                vastHourly: 1.15
+            },
+            'rtx4090': {
+                name: 'NVIDIA RTX 4090 24GB',
+                awsHourly: 2.10,
+                vastHourly: 0.42
+            },
+            'l40s': {
+                name: 'NVIDIA L40S 48GB',
+                awsHourly: 2.45,
+                vastHourly: 0.78
+            },
+            'rtx3090': {
+                name: 'NVIDIA RTX 3090 24GB',
+                awsHourly: 1.60,
+                vastHourly: 0.22
+            }
+        };
+
+        let currentGpuKey = 'a100';
+
+        function selectGpu(gpuKey, btnElement) {
+            currentGpuKey = gpuKey;
+            document.querySelectorAll('.gpu-btn').forEach(btn => btn.classList.remove('active'));
+            if (btnElement) btnElement.classList.add('active');
+            document.getElementById('selectedGpuName').innerText = GPU_PROFILES[gpuKey].name;
+            updateCalculator();
+        }
+
+        function setGpuCount(val) {
+            document.getElementById('gpuCountSlider').value = val;
+            updateCalculator();
+        }
+
+        function setHours(val) {
+            document.getElementById('hoursSlider').value = val;
+            updateCalculator();
+        }
+
+        function formatCurrency(num) {
+            return '$' + Math.round(num).toLocaleString();
+        }
+
+        function updateCalculator() {
+            const gpuCount = parseInt(document.getElementById('gpuCountSlider').value, 10);
+            const weeklyHours = parseInt(document.getElementById('hoursSlider').value, 10);
+            
+            // Update labels
+            document.getElementById('gpuCountDisplay').innerText = gpuCount + (gpuCount === 1 ? ' GPU' : ' GPUs');
+            document.getElementById('hoursDisplay').innerText = weeklyHours + ' hrs / week';
+
+            const gpuProfile = GPU_PROFILES[currentGpuKey];
+            const monthlyHoursPerGpu = weeklyHours * 4.333; // Average weeks per month
+            const totalMonthlyGpuHours = monthlyHoursPerGpu * gpuCount;
+
+            const awsMonthlyCost = totalMonthlyGpuHours * gpuProfile.awsHourly;
+            const vastSpotComputeCost = totalMonthlyGpuHours * gpuProfile.vastHourly;
+            const spotwarpPassCost = 49; // $49/mo per machine
+            const spotwarpTotalMonthlyCost = vastSpotComputeCost + spotwarpPassCost;
+
+            const netMonthlySavings = Math.max(0, awsMonthlyCost - spotwarpTotalMonthlyCost);
+            const savingsPct = awsMonthlyCost > 0 ? ((netMonthlySavings / awsMonthlyCost) * 100).toFixed(1) : 0;
+            const annualSavings = netMonthlySavings * 12;
+
+            // Update DOM Elements
+            document.getElementById('awsCostDisplay').innerText = formatCurrency(awsMonthlyCost) + ' / mo';
+            document.getElementById('spotwarpCostDisplay').innerText = formatCurrency(spotwarpTotalMonthlyCost) + ' / mo';
+            document.getElementById('savingsAmountDisplay').innerText = formatCurrency(netMonthlySavings);
+            document.getElementById('savingsPctDisplay').innerText = `You Save ${savingsPct}% of Cloud GPU Costs`;
+            document.getElementById('annualSavingsDisplay').innerText = formatCurrency(annualSavings) + ' / yr';
+
+            const ctaBtn = document.getElementById('calcCtaBtn');
+            if (ctaBtn) {
+                ctaBtn.innerHTML = `Start 14-Day Free Trial & Save ${formatCurrency(netMonthlySavings)}/mo <i class="fa-solid fa-arrow-right"></i>`;
+            }
+        }
+
         window.onload = function() {
+            // Initialize calculator
+            updateCalculator();
+
             // Check for error in query parameters
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('error') === 'invalid_license') {

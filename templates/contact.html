@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us | SpotWarp</title>
+    <meta name="description" content="Get in touch with the SpotWarp team.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.gpu-action.com/contact">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #030712;
+            --accent-orange: #f97316;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --border-color: rgba(255,255,255,0.06);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 5% 10%, rgba(249,115,22,0.04) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            background: rgba(3,7,18,0.75);
+        }
+        .nav-container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+        .logo {
+            font-size: 1.4rem; font-weight: 800; color: var(--accent-orange);
+            text-decoration: none; display: flex; align-items: center; gap: 8px;
+        }
+        .content { max-width: 640px; margin: 5rem auto; padding: 0 24px 6rem; }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-muted); font-size: 0.88rem; text-decoration: none;
+            margin-bottom: 2.5rem; transition: color 0.2s;
+        }
+        .back-link:hover { color: var(--accent-orange); }
+        h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 1.5rem; }
+        p { color: var(--text-muted); font-size: 1rem; line-height: 1.8; margin-bottom: 1.2rem; }
+        .card {
+            margin-top: 2.5rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 28px 32px;
+        }
+        .card-label {
+            font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em;
+            color: var(--text-muted); font-weight: 600; margin-bottom: 8px;
+        }
+        #contact-email {
+            font-size: 1.3rem; font-weight: 700; color: var(--accent-orange);
+            font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+        }
+        .response-note {
+            display: flex; align-items: center; gap: 8px;
+            margin-top: 1.8rem; color: var(--text-muted); font-size: 0.9rem;
+        }
+        .response-note i { color: var(--accent-orange); }
+        footer {
+            text-align: center; padding: 32px; border-top: 1px solid var(--border-color);
+            color: var(--text-muted); font-size: 0.8rem;
+        }
+        footer a { color: inherit; text-decoration: underline; transition: color 0.2s; }
+        footer a:hover { color: var(--accent-orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="nav-container">
+            <a href="/" class="logo"><i class="fa-solid fa-server"></i> gpu-action.com</a>
+        </div>
+    </header>
+
+    <div class="content">
+        <a href="/" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to SpotWarp</a>
+
+        <h1>Contact Us</h1>
+        <p>Questions about setup, billing, or anything about SpotWarp — reach out and a real person will get back to you.</p>
+
+        <div class="card">
+            <div class="card-label">Email</div>
+            <div id="contact-email"></div>
+        </div>
+
+        <div class="response-note">
+            <i class="fa-solid fa-clock"></i> We typically reply within 24–48 hours.
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 gpu-action.com &middot; <a href="https://enplabs.com" target="_blank">ENPLabs</a> Group. All rights reserved. &mdash;
+        <a href="/">Return to Home</a>
+    </footer>
+
+    <script>
+        // Filled in at render time, not in the server HTML, so Cloudflare's
+        // Email Address Obfuscation (which rewrites any plain-text address it
+        // finds server-side) never gets a literal string to mangle.
+        document.getElementById('contact-email').textContent = ['info', 'gpu-action.com'].join('@');
+    </script>
+</body>
+</html>

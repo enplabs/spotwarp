@@ -327,7 +327,7 @@
                     <a href="#intro" class="sidebar-link active">Introduction</a>
                     <a href="#rent-gpu" class="sidebar-link">Rent Your GPU</a>
                     <a href="#install" class="sidebar-link">Installation</a>
-                    <a href="#config" class="sidebar-link">Environment Configuration</a>
+                    <a href="#config" class="sidebar-link">Quick Setup (1-Min Wizard)</a>
                 </div>
                 <div class="sidebar-group">
                     <span class="sidebar-group-title">Usage Guide</span>
@@ -386,53 +386,76 @@
                 <section id="install" class="docs-section">
                     <h2>Installation</h2>
                     <p>
-                        Once you have a GPU instance running (previous step), install SpotWarp on your own local PC — not on the rented instance. If Python 3.8+ is installed on your local host machine, you can install the official package via Pip in seconds:
+                        Once you have a GPU instance running, install SpotWarp on your own local PC or orchestrator machine. If Python 3.8+ is installed, install the official package via Pip:
                     </p>
-                    <pre><button class="btn-copy-code" onclick="copyText('pip install spotwarp')">Copy</button><code>pip install spotwarp</code></pre>
+                    <pre><button class="btn-copy-code" onclick="copyText('pip install --upgrade spotwarp')">Copy</button><code>pip install --upgrade spotwarp</code></pre>
                     
                     <h3>Windows Backup Transport</h3>
                     <p>
-                        SpotWarp uses <code>rsync</code> for high-speed incremental workspace backups when it's natively available (Linux/macOS). On Windows, it automatically uses <code>scp</code> (bundled with Windows' native OpenSSH client) instead — no extra setup or download required on first startup.
+                        SpotWarp uses <code>rsync</code> for high-speed incremental workspace backups when natively available (Linux/macOS). On Windows, it automatically uses <code>scp</code> (bundled with Windows' native OpenSSH client) — zero extra setup required.
                     </p>
                 </section>
                 
-                <!-- 3. Configuration -->
+                <!-- 4. Configuration -->
                 <section id="config" class="docs-section">
-                    <h2>Environment Configuration</h2>
+                    <h2>Quick Setup Wizard</h2>
                     <p>
-                        Before starting the guard, export your cloud provider API credentials locally on your client machine:
+                        Run the one-time interactive setup wizard to save your keys locally to <code>~/.spotwarp/config.json</code>:
+                    </p>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp init')">Copy</button><code>spotwarp init</code></pre>
+                    <p>
+                        The wizard will prompt you for your <b>SpotWarp License Key</b>, <b>Vast.ai API Key</b>, and optional <b>RunPod API Key</b>. Once configured, you never need to export environment variables or pass keys via CLI again.
+                    </p>
+
+                    <h3>Alternative: Manual Environment Variables</h3>
+                    <p>
+                        If you prefer not to use a local config file (e.g. inside ephemeral CI/CD pipelines), you can still export keys via standard environment variables:
                     </p>
                     
-                    <h3>macOS / Linux</h3>
-                    <pre><button class="btn-copy-code" onclick="copyText('export VAST_API_KEY=&quot;your_vast_key&quot;\nexport RUNPOD_API_KEY=&quot;your_runpod_key&quot;')">Copy</button><code>export VAST_API_KEY="your_vast_api_key_here"
-export RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
+                    <pre><button class="btn-copy-code" onclick="copyText('export VAST_API_KEY=&quot;your_vast_key&quot;\nexport RUNPOD_API_KEY=&quot;your_runpod_key&quot;')">Copy</button><code># Linux / macOS
+export VAST_API_KEY="your_vast_api_key"
+export RUNPOD_API_KEY="your_runpod_api_key"
 
-                    <h3>Windows PowerShell</h3>
-                    <pre><button class="btn-copy-code" onclick="copyText('$env:VAST_API_KEY=&quot;your_vast_key&quot;\n$env:RUNPOD_API_KEY=&quot;your_runpod_key&quot;')">Copy</button><code>$env:VAST_API_KEY="your_vast_api_key_here"
-$env:RUNPOD_API_KEY="your_runpod_api_key_here"</code></pre>
+# Windows PowerShell
+$env:VAST_API_KEY="your_vast_api_key"
+$env:RUNPOD_API_KEY="your_runpod_api_key"</code></pre>
                 </section>
                 
-                <!-- 4. Activation -->
+                <!-- 5. Activation -->
                 <section id="activation" class="docs-section">
                     <h2>Start Guard Daemon</h2>
                     <p>
-                        Start the failover guard by passing your subscription license key:
+                        Once configured, start protecting your workloads with a single command:
                     </p>
-                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --license-key YOUR_LICENSE_KEY')">Copy</button><code>spotwarp start --license-key YOUR_LICENSE_KEY</code></pre>
                     
+                    <h3>Option A: Live Console Mode</h3>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start')">Copy</button><code>spotwarp start</code></pre>
+
+                    <h3>Option B: 24/7 Background Daemon Mode</h3>
+                    <p>
+                        Run SpotWarp in detached background mode so you can safely close your terminal window:
+                    </p>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start -d')">Copy</button><code>spotwarp start -d</code></pre>
+
+                    <h3>Daemon Management Commands</h3>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp status\nspotwarp stop\nspotwarp config')">Copy</button><code>spotwarp status   # Check if background guard is alive
+spotwarp stop     # Gracefully stop the background guard
+spotwarp config   # View your current local configuration</code></pre>
+
                     <div class="callout">
                         <div class="callout-title"><i class="fa-solid fa-info"></i> Local Development Bypass</div>
                         <p style="margin: 0; font-size: 0.9rem;">
-                            For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>TRIAL_LOCAL_PASS</code> as the license argument (or simply omitting <code>--license-key</code>, which defaults to it).
+                            For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>TRIAL_LOCAL_PASS</code> (or simply leaving the license blank during <code>spotwarp init</code>).
                         </p>
                     </div>
 
-                    <h3>Choosing where backups are stored</h3>
+                    <h3>Custom Backup Location</h3>
                     <p>
-                        By default, workspace backups are written to <code>.\backups\&lt;instance_id&gt;\</code> relative to wherever you ran <code>spotwarp start</code> from. To use a different drive or folder (e.g. if your system drive is low on space), pass <code>--backup-dir</code> or set the <code>SPOTWARP_BACKUP_DIR</code> environment variable:
+                        By default, workspace backups are written to <code>./backups/&lt;instance_id&gt;/</code>. To use a different drive, pass <code>--backup-dir</code>:
                     </p>
-                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --license-key YOUR_LICENSE_KEY --backup-dir &quot;D:\\SpotwarpBackups&quot;')">Copy</button><code>spotwarp start --license-key YOUR_LICENSE_KEY --backup-dir "D:\SpotwarpBackups"</code></pre>
+                    <pre><button class="btn-copy-code" onclick="copyText('spotwarp start --backup-dir &quot;D:\\SpotwarpBackups&quot;')">Copy</button><code>spotwarp start --backup-dir "D:\SpotwarpBackups"</code></pre>
                 </section>
+
 
                 <!-- 5. Stateful Auto-Resume -->
                 <section id="auto-resume" class="docs-section">

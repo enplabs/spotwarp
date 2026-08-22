@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpotWarp | Setup Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --bg-deep:#0a0f1a;
+  --bg-panel:#101826;
+  --border:rgba(255,255,255,0.09);
+  --border-soft:rgba(255,255,255,0.05);
+  --text-main:#eef2f8;
+  --text-muted:#8b96a8;
+  --text-faint:#5c6678;
+  --orange:#f97316;
+  --orange-dim:rgba(249,115,22,0.14);
+  --cyan:#22d3ee;
+  --cyan-dim:rgba(34,211,238,0.12);
+  --green:#34d399;
+  --green-dim:rgba(52,211,153,0.12);
+  --red:#f87171;
+  --red-dim:rgba(248,113,113,0.12);
+  --code-bg:#060a12;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{background:var(--bg-deep); color:var(--text-main);}
+body{
+  font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:15px;
+  line-height:1.6;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(249,115,22,0.05) 0%, transparent 38%),
+    radial-gradient(circle at 100% 12%, rgba(34,211,238,0.05) 0%, transparent 42%),
+    var(--bg-deep);
+  padding-bottom:64px;
+}
+
+/* ---------- site nav ---------- */
+.site-nav{
+  border-bottom:1px solid var(--border-soft);
+  background:rgba(3,7,18,0.7);
+  backdrop-filter:blur(12px);
+  position:sticky; top:0; z-index:10;
+}
+.site-nav-inner{
+  max-width:860px; margin:0 auto; padding:0 28px;
+  height:62px; display:flex; align-items:center; justify-content:space-between;
+}
+.site-logo{
+  font-weight:800; font-size:1.1rem; color:#fff; text-decoration:none;
+  display:flex; align-items:center; gap:8px;
+}
+.site-logo span{color:var(--orange);}
+.site-links{display:flex; gap:20px; align-items:center;}
+.site-links a{
+  color:var(--text-muted); text-decoration:none; font-size:0.88rem; font-weight:500;
+  display:flex; align-items:center; gap:6px; transition:color 0.15s;
+}
+.site-links a:hover{color:#fff;}
+
+.wrap{max-width:860px; margin:0 auto; padding:0 28px;}
+
+/* ---------- header ---------- */
+header{padding:56px 0 40px; border-bottom:1px solid var(--border-soft);}
+.eyebrow{
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+  font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--orange); background:var(--orange-dim);
+  border:1px solid rgba(249,115,22,0.28);
+  padding:5px 11px; border-radius:6px; margin-bottom:22px;
+}
+.eyebrow::before{content:"⚡"; font-size:11px;}
+h1{
+  font-size:38px; font-weight:800; letter-spacing:-0.02em;
+  text-wrap:balance; margin-bottom:14px;
+}
+h1 span{color:var(--orange);}
+header p{color:var(--text-muted); font-size:16.5px; max-width:56ch;}
+
+/* ---------- section scaffolding ---------- */
+section{padding:44px 0; border-bottom:1px solid var(--border-soft);}
+section:last-of-type{border-bottom:none;}
+.step-head{display:flex; align-items:baseline; gap:14px; margin-bottom:16px;}
+.step-num{
+  font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+  font-size:13px; color:var(--bg-deep); background:var(--orange);
+  width:26px; height:26px; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-weight:700;
+}
+h2{font-size:21px; font-weight:700; letter-spacing:-0.01em;}
+.step-sub{color:var(--text-muted); font-size:12.5px; text-transform:uppercase; letter-spacing:0.05em; margin-left:auto; white-space:nowrap;}
+section > p.lead{color:var(--text-muted); margin:0 0 20px 40px; max-width:62ch;}
+
+/* ---------- code blocks ---------- */
+.code-panel{
+  margin-left:40px;
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+}
+.code-panel + .code-panel{margin-top:12px;}
+.code-label{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 14px; border-bottom:1px solid var(--border-soft);
+  font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+  font-size:11.5px; color:var(--text-faint); letter-spacing:0.03em;
+}
+.code-label b{color:var(--text-muted); font-weight:600;}
+pre{
+  font-family:ui-monospace,"Cascadia Code","SFMono-Regular",Consolas,monospace;
+  font-size:13.5px; line-height:1.65;
+  padding:14px 16px; overflow-x:auto;
+  color:#d7dee9;
+}
+pre .c{color:var(--text-faint);}
+pre .v{color:var(--cyan);}
+pre .flag{color:var(--orange);}
+
+.two-col{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-left:40px;}
+.two-col .code-panel{margin-left:0;}
+@media (max-width:640px){.two-col{grid-template-columns:1fr;}}
+
+.callout{
+  margin:14px 0 0 40px;
+  padding:12px 15px;
+  border-left:3px solid var(--cyan);
+  background:var(--cyan-dim);
+  border-radius:0 8px 8px 0;
+  font-size:13.5px; color:#c7e9f1;
+}
+.callout.warn{border-left-color:var(--red); background:var(--red-dim); color:#f8d4d4;}
+.callout b{color:var(--text-main);}
+.callout code, .lead code, p code, li code{
+  font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+  font-size:0.88em; background:rgba(255,255,255,0.06);
+  padding:1px 6px; border-radius:4px; color:var(--cyan);
+}
+
+/* ---------- output decoder ---------- */
+.decoder{margin-left:40px; display:flex; flex-direction:column; gap:9px;}
+.decoder-row{
+  display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+  gap:16px; align-items:center;
+  padding:11px 14px; background:var(--bg-panel);
+  border:1px solid var(--border); border-radius:9px;
+}
+@media (max-width:640px){.decoder-row{grid-template-columns:1fr;}}
+.decoder-row code{
+  font-family:ui-monospace,"Cascadia Code",Consolas,monospace;
+  font-size:12px; color:var(--text-muted); background:none; padding:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.decoder-row .meaning{font-size:13px; color:var(--text-main);}
+.tag{
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:10.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+  padding:2px 7px; border-radius:5px; margin-right:8px; vertical-align:1px;
+}
+.tag.ok{background:var(--green-dim); color:var(--green);}
+.tag.wait{background:var(--orange-dim); color:var(--orange);}
+.tag.bad{background:var(--red-dim); color:var(--red);}
+
+/* ---------- troubleshooting table ---------- */
+table{width:calc(100% - 40px); border-collapse:collapse; margin-left:40px;}
+th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em;
+  color:var(--text-faint); font-weight:600; padding:0 14px 10px;
+  border-bottom:1px solid var(--border);
+}
+td{
+  padding:13px 14px; border-bottom:1px solid var(--border-soft);
+  font-size:13.5px; vertical-align:top;
+}
+td:first-child{color:var(--text-muted); font-family:ui-monospace,"Cascadia Code",Consolas,monospace; font-size:12px; white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+
+/* ---------- footer ---------- */
+footer{padding:36px 0 0; text-align:center; color:var(--text-faint); font-size:12.5px;}
+footer a{color:var(--cyan); text-decoration:none;}
+footer a:hover{text-decoration:underline;}
+
+::selection{background:var(--orange-dim); color:var(--text-main);}
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="/" class="site-logo"><i class="fa-solid fa-bolt-lightning"></i>GPU<span>-ACTION</span></a>
+    <div class="site-links">
+      <a href="/docs"><i class="fa-solid fa-book"></i> Full Docs</a>
+      <a href="/"><i class="fa-solid fa-house"></i> Home</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Setup Guide</div>
+  <h1>Get <span>SpotWarp</span> running in 1 minute</h1>
+  <p>Three simple steps. Your credentials stay 100% local — zero cloud key uploads.</p>
+</header>
+
+<section>
+  <div class="step-head">
+    <div class="step-num">1</div>
+    <h2>Install SpotWarp</h2>
+    <span class="step-sub">on your local machine / server</span>
+  </div>
+  <p class="lead">Works on Linux, macOS, and Windows. No root or sudo required.</p>
+  <div class="code-panel">
+    <div class="code-label"><b>terminal (any OS)</b></div>
+    <pre>pip install <span class="flag">--upgrade</span> spotwarp</pre>
+  </div>
+</section>
+
+<section>
+  <div class="step-head">
+    <div class="step-num">2</div>
+    <h2>Run One-Time Quick Setup</h2>
+    <span class="step-sub">100% local config</span>
+  </div>
+  <p class="lead">Interactive wizard saves your keys locally to <code>~/.spotwarp/config.json</code> so you never need to export environment variables again.</p>
+  <div class="code-panel">
+    <div class="code-label"><b>terminal (any OS)</b></div>
+    <pre>spotwarp init</pre>
+  </div>
+  <div class="callout">
+    Enter your <b>SpotWarp License Key</b> (or start with trial key) and <b>Vast.ai API Key</b>. RunPod key is optional for cross-cloud fallback.
+  </div>
+</section>
+
+<section>
+  <div class="step-head">
+    <div class="step-num">3</div>
+    <h2>Start the Guard</h2>
+    <span class="step-sub">instant protection</span>
+  </div>
+  <p class="lead">Run in the foreground or detach as a 24/7 background daemon with <code>-d</code>.</p>
+  <div class="two-col">
+    <div class="code-panel">
+      <div class="code-label"><b>Option A: Foreground Live Console</b></div>
+      <pre>spotwarp start</pre>
+    </div>
+    <div class="code-panel">
+      <div class="code-label"><b>Option B: 24/7 Background Daemon</b></div>
+      <pre>spotwarp start <span class="flag">-d</span></pre>
+    </div>
+  </div>
+  <div class="callout">
+    💡 <b>Training Auto-Resume:</b> To automatically resume training on replacement GPUs, add: <br>
+    <code>spotwarp start --resume-cmd "python train.py --resume"</code>
+  </div>
+</section>
+
+<section>
+  <div class="step-head">
+    <div class="step-num">4</div>
+    <h2>Daemon Management & Status</h2>
+    <span class="step-sub">cli commands</span>
+  </div>
+  <div class="two-col">
+    <div class="code-panel">
+      <div class="code-label"><b>Check Status</b></div>
+      <pre>spotwarp status</pre>
+    </div>
+    <div class="code-panel">
+      <div class="code-label"><b>Stop Daemon</b></div>
+      <pre>spotwarp stop</pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="step-head">
+    <div class="step-num">5</div>
+    <h2>Console Output Decoder</h2>
+    <span class="step-sub">what you see</span>
+  </div>
+  <div class="decoder">
+    <div class="decoder-row">
+      <code>License Verified: Active</code>
+      <div class="meaning"><span class="tag ok">Good</span>You're authenticated. Zero-downtime protection is live.</div>
+    </div>
+    <div class="decoder-row">
+      <code>Found new active instance: …</code>
+      <div class="meaning"><span class="tag ok">Good</span>Rented Spot GPU auto-detected. Continuous delta-sync active.</div>
+    </div>
+    <div class="decoder-row">
+      <code>Monitoring 0 instances</code>
+      <div class="meaning"><span class="tag wait">Normal</span>No active GPU instance running on your Vast.ai account yet.</div>
+    </div>
+    <div class="decoder-row">
+      <code>Triggering Failover Protocol</code>
+      <div class="meaning"><span class="tag ok">Action</span>Eviction detected. SpotWarp is provisioning a replacement GPU and restoring files.</div>
+    </div>
+  </div>
+</section>
+
+
+<section>
+  <div class="step-head">
+    <div class="step-num" style="background:var(--cyan); color:#06222a;">?</div>
+    <h2>Troubleshooting</h2>
+  </div>
+  <table>
+    <thead><tr><th>You see</th><th>It means</th></tr></thead>
+    <tbody>
+      <tr><td>status 401</td><td>License key mistyped or concatenated with another key — re-copy it as one piece.</td></tr>
+      <tr><td>0 instances, GPU rented</td><td><code>VAST_API_KEY</code> isn't set in this window — re-run step 3 here.</td></tr>
+      <tr><td><code>export</code> error</td><td>You're in PowerShell — use <code>$env:</code> instead.</td></tr>
+      <tr><td>backups missing</td><td>Check <code>.\backups\&lt;instance_id&gt;\</code>, or your <code>--backup-dir</code> path.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  Still stuck — <a href="mailto:info@gpu-action.com">info@gpu-action.com</a>, license key + console output.
+</footer>
+
+</div>
+</body>
+</html>

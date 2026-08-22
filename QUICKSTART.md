@@ -1,62 +1,57 @@
-# SpotWarp — Setup Guide
+# SpotWarp — Quick Setup Guide (v3.3)
 
-Five steps, in order. Windows PowerShell and macOS/Linux commands are both shown where they differ — copy the one for your machine.
+Three simple steps. Your credentials stay 100% local — zero cloud key uploads.
 
 An interactive version of this guide is also at [gpu-action.com/quickstart](https://gpu-action.com/quickstart).
 
-## 1. Get a GPU to protect
+## 1. Install SpotWarp
 
-SpotWarp doesn't rent or resell GPUs — you rent directly from Vast.ai, and SpotWarp watches whatever you've rented there.
-
-Sign up at **vast.ai** → Account → API Keys, generate a key. Then rent a GPU instance yourself from their console (any Spot-priced GPU). Keep the API key handy for step 4.
-
-## 2. Install SpotWarp
-
-On your own PC — not the rented GPU:
+On your own PC or server (Linux, macOS, or Windows):
 
 ```bash
 pip install --upgrade spotwarp
 ```
 
-Always include `--upgrade`. Without it, pip silently does nothing if any version is already installed — you can end up running code that's months old with no warning.
+Always include `--upgrade` to ensure you are running the latest version with background daemon and wizard support.
 
-## 3. Set your API keys
+## 2. Run One-Time Quick Setup
 
-Current terminal window only. These stay 100% local — SpotWarp never sees or stores them. RunPod is optional; it only enables cross-cloud fallback.
+Save your keys locally to `~/.spotwarp/config.json`:
 
-**Windows — PowerShell:**
-```powershell
-$env:VAST_API_KEY="your_key"
-$env:RUNPOD_API_KEY="your_key"  # optional
-```
-
-**macOS / Linux:**
 ```bash
-export VAST_API_KEY="your_key"
-export RUNPOD_API_KEY="your_key"  # optional
+spotwarp init
 ```
 
-> **Common mistake:** `export` is bash-only — it errors out in PowerShell (`CommandNotFoundException`). Use `$env:` on Windows. This has to be re-run every time you open a new terminal window.
+The interactive wizard will prompt you for:
+1. **SpotWarp License Key** (or use trial key)
+2. **Vast.ai API Key**
+3. **RunPod API Key** (optional, enables cross-cloud bridge fallback)
+4. **Backup Directory** (default: `./backups/`)
 
-## 4. Start the guard
+## 3. Start the Guard
 
-Same window as step 3.
-
-Minimum:
 ```bash
-spotwarp start --license-key YOUR_LICENSE_KEY
+# Option A: Foreground live console
+spotwarp start
+
+# Option B: 24/7 background daemon (safely close terminal)
+spotwarp start -d
 ```
 
-Full — auto-resume training + custom backup drive:
-```powershell
-spotwarp start --license-key YOUR_LICENSE_KEY `
-  --resume-cmd "python train.py --resume" `
-  --backup-dir "D:\SpotwarpBackups"
+### Auto-Resume Training (Optional)
+To automatically resume training scripts inside the replacement container upon eviction:
+```bash
+spotwarp start --resume-cmd "python train.py --resume"
 ```
 
-Paste your license key as **one unbroken piece** — a dropped `TRIAL_` prefix or two keys pasted together is the #1 cause of a 401 error below.
+## 4. Daemon Management Commands
 
-No training script running yet? Drop `--resume-cmd` entirely. No preferred backup location? Drop `--backup-dir` — it defaults to `./backups/` next to where you ran the command. **Leave this window open** — closing it stops protection.
+```bash
+spotwarp status   # Check if background daemon is running & PID
+spotwarp stop     # Gracefully stop the background daemon
+spotwarp config   # View your current local configuration
+```
+
 
 ## 5. Read what it's telling you
 

@@ -16,7 +16,7 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ## 🆚 Spot GPU Eviction: Standard vs. SpotWarp
 
-| Feature | Standard Spot Instance | With SpotWarp (v3.2) |
+| Feature | Standard Spot Instance | With SpotWarp (v3.3) |
 | :--- | :--- | :--- |
 | **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
 | **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement in under a minute. |
@@ -41,31 +41,37 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ---
 
-## 🚀 Quick Start in 2 Minutes
+## 🚀 Quick Start in 1 Minute
 
 ### 1. Installation (Local PC)
 Install the official package via Pip:
 ```bash
-pip install spotwarp
+pip install --upgrade spotwarp
 ```
 
-### 2. Export API Keys & Set Up Local Environment
-Set your Vast.ai API key on your local machine. Add a RunPod API key too if you want the cross-cloud bridge (optional, but recommended — it's what keeps a bad-inventory day on Vast.ai from becoming downtime):
+### 2. One-Time Interactive Setup Wizard
+Run the setup wizard once to save your keys locally to `~/.spotwarp/config.json`:
 ```bash
-# On Linux/macOS
-export VAST_API_KEY="your_vast_api_key"
-export RUNPOD_API_KEY="your_runpod_api_key"   # optional, enables cross-cloud fallback + auto-failback
-
-# On Windows (PowerShell)
-$env:VAST_API_KEY="your_vast_api_key"
-$env:RUNPOD_API_KEY="your_runpod_api_key"
+spotwarp init
 ```
+*(Prompts for your SpotWarp License Key and Vast.ai API Key — RunPod key is optional for cross-cloud fallback.)*
 
-### 3. Start the Guard (With Auto-Sync & Training Resume)
-Run the guard daemon on your local PC. Point it to your license key and define how your training should resume:
+### 3. Start the Guard
 ```bash
-spotwarp start --license-key YOUR_SPOTWARP_KEY --resume-cmd "python /workspace/train.py --resume"
+# Option A: Foreground Live Console
+spotwarp start
+
+# Option B: 24/7 Background Daemon (safely close your terminal)
+spotwarp start -d
 ```
+
+### 4. Daemon Management
+```bash
+spotwarp status   # Check daemon health & PID
+spotwarp stop     # Gracefully stop the background daemon
+spotwarp config   # View local configuration
+```
+
 
 ---
 

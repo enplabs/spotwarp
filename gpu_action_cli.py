@@ -1119,7 +1119,7 @@ class GpuActionGuard:
                 self.reporting_thread.join(timeout=3)
             print("[SpotWarp Guard] Guard daemon stopped gracefully.")
 
-VERSION = "3.3.1"
+VERSION = "3.3.2"
 CONFIG_DIR = os.path.expanduser("~/.spotwarp")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
@@ -1243,14 +1243,23 @@ def cmd_status():
         print("⚠️  [SpotWarp Status] Stale PID file found. Daemon is not running.")
         return
 
-    # Check if process is alive
+    # Check if process is alive (Rock-solid Win32 API check)
     is_alive = False
     if sys.platform == 'win32':
         try:
-            out = subprocess.check_output(f"tasklist /FI \"PID eq {pid}\"", shell=True).decode()
-            is_alive = str(pid) in out
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            h_proc = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if h_proc:
+                kernel32.CloseHandle(h_proc)
+                is_alive = True
         except Exception:
-            is_alive = False
+            try:
+                res = subprocess.run(["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, encoding='utf-8', errors='ignore')
+                is_alive = str(pid) in res.stdout
+            except Exception:
+                is_alive = False
     else:
         try:
             os.kill(pid, 0)
@@ -1263,10 +1272,13 @@ def cmd_status():
         print(f"   Log file: {LOG_FILE}")
         if os.path.exists(LOG_FILE):
             print("\n--- Recent Log Lines ---")
-            with open(LOG_FILE, "r", encoding="utf-8", errors="ignore") as f:
-                lines = f.readlines()
-                for line in lines[-10:]:
-                    print("   " + line.rstrip())
+            try:
+                with open(LOG_FILE, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+                    for line in lines[-10:]:
+                        print("   " + line.rstrip())
+            except Exception:
+                pass
             print("------------------------")
     else:
         print(f"🔴 [SpotWarp Status] Guard daemon (PID: {pid}) is not responding.")

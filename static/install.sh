@@ -23,7 +23,7 @@ echo " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   "
 echo "       |_|                                |_|      "
 echo -e "${RESET}"
 echo -e "${BOLD}SpotWarp: Spot GPU Continuous Backup & Cross-Cloud Failover Daemon${RESET}"
-echo -e "Version: ${GREEN}v3.3.1${RESET}\n"
+echo -e "Version: ${GREEN}v3.3.2${RESET}\n"
 
 # 1. Check Python3 presence
 if ! command -v python3 &> /dev/null; then
@@ -32,7 +32,7 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 echo -e "${CYAN}[*] Installing/Upgrading spotwarp via pip...${RESET}"
-python3 -m pip install --upgrade --quiet spotwarp>=3.3.1
+python3 -m pip install --upgrade --quiet "spotwarp>=3.3.2"
 
 # 2. Verify CLI installation
 if command -v spotwarp &> /dev/null; then

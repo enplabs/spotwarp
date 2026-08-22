@@ -1,4 +1,4 @@
-# SpotWarp — Quick Setup Guide (v3.3.1)
+# SpotWarp — Quick Setup Guide (v3.3.2)
 
 Three simple steps. Your credentials stay 100% local — zero cloud key uploads.
 

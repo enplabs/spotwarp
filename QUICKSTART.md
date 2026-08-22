@@ -1,4 +1,4 @@
-# SpotWarp — Quick Setup Guide (v3.3)
+# SpotWarp — Quick Setup Guide (v3.3.1)
 
 Three simple steps. Your credentials stay 100% local — zero cloud key uploads.
 
@@ -8,23 +8,36 @@ An interactive version of this guide is also at [gpu-action.com/quickstart](http
 
 On your own PC or server (Linux, macOS, or Windows):
 
+### Universal 1-Liner (Recommended)
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://gpu-action.com/install.sh | bash
+```
+
+**Windows PowerShell:**
+```powershell
+irm https://gpu-action.com/install.ps1 | iex
+```
+
+### Standard Python pip
 ```bash
 pip install --upgrade spotwarp
 ```
 
-Always include `--upgrade` to ensure you are running the latest version with background daemon and wizard support.
+## 2. Zero-Config Setup
 
-## 2. Run One-Time Quick Setup
+SpotWarp automatically detects your existing Vast.ai and RunPod keys from `~/.vast_api_key` or `~/.runpod/config.toml` (Zero-Config mode).
 
-Save your keys locally to `~/.spotwarp/config.json`:
+Or run the interactive 1-minute setup wizard to save keys locally to `~/.spotwarp/config.json`:
 
 ```bash
 spotwarp init
 ```
 
 The interactive wizard will prompt you for:
-1. **SpotWarp License Key** (or use trial key)
-2. **Vast.ai API Key**
+1. **SpotWarp License Key** (press Enter for Trial mode)
+2. **Vast.ai API Key** (auto-detected if present)
 3. **RunPod API Key** (optional, enables cross-cloud bridge fallback)
 4. **Backup Directory** (default: `./backups/`)
 

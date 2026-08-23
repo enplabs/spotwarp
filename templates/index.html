@@ -662,15 +662,19 @@
             <h1>Never Lose a Training Run to<br><span class="highlight">a Spot GPU Eviction</span></h1>
             <p>The real cost of an eviction was never the downtime — it's the hours of progress that vanish with it. SpotWarp runs continuous automatic backups of your workspace in the background, then delivers sub-minute cross-cloud failover (Vast.ai ⇄ RunPod) so recovery is hands-off too. Cut GPU costs by up to 70% by safely using Spot pricing instead of on-demand.</p>
 
-            <!-- Code snippet -->
+            <!-- Code snippet with OS Tabs -->
             <div class="code-box">
-                <div class="code-header">
-                    <span><i class="fa-brands fa-python"></i> Quick Start (PyPI)</span>
-                    <span><i class="fa-solid fa-circle-check"></i> 2-Minute Setup</span>
+                <div class="code-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #21262d; padding-bottom: 10px; margin-bottom: 12px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button id="tab-linux" onclick="switchInstallTab('linux')" style="background: rgba(249,115,22,0.25); border: 1px solid var(--accent-orange); color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: 700; transition: all 0.2s;"><i class="fa-brands fa-linux"></i> Linux / macOS</button>
+                        <button id="tab-win" onclick="switchInstallTab('win')" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #94a3b8; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: 700; transition: all 0.2s;"><i class="fa-brands fa-windows"></i> Windows</button>
+                        <button id="tab-pypi" onclick="switchInstallTab('pypi')" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #94a3b8; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: 700; transition: all 0.2s;"><i class="fa-brands fa-python"></i> PyPI</button>
+                    </div>
+                    <span style="font-size: 0.8rem; color: var(--accent-green); font-weight: 600;"><i class="fa-solid fa-bolt"></i> 1-Liner Auto Setup</span>
                 </div>
                 <div class="code-content">
-                    <code>pip install spotwarp</code>
-                    <button class="copy-btn" onclick="copyInstallCommand()">Copy Command</button>
+                    <code id="installCommandText" style="word-break: break-all;">curl -fsSL https://gpu-action.com/install.sh | bash</code>
+                    <button class="copy-btn" onclick="copyActiveCommand()"><i class="fa-regular fa-copy"></i> Copy</button>
                 </div>
             </div>
 
@@ -900,6 +904,63 @@
                     <li><i class="fa-solid fa-check"></i> Unlimited Concurrent Spot GPUs</li>
                 </ul>
                 <button class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);" onclick="subscribeNow('SpotWarp Pass ($49/mo)', this)"><i class="fa-solid fa-bolt"></i> Subscribe Now — $49 / mo</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="container" style="max-width: 860px; margin: 80px auto 60px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <div class="badge" style="background: rgba(139, 92, 246, 0.12); border-color: rgba(139, 92, 246, 0.3); color: var(--accent-purple);">
+                <i class="fa-solid fa-circle-question"></i> Frequently Asked Questions
+            </div>
+            <h2 style="font-size: 2.2rem; font-weight: 800; margin-top: 10px;">Got Questions? We Have Answers.</h2>
+            <p style="color: var(--text-muted); font-size: 1rem; margin-top: 6px;">Everything you need to know about SpotWarp pricing, security, and failover protection.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- FAQ 1 -->
+            <div class="faq-item" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s;">
+                <button onclick="toggleFaq(this)" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: transparent; border: none; color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: left;">
+                    <span><i class="fa-solid fa-microchip" style="color: var(--accent-orange); margin-right: 10px;"></i> How many GPUs can I protect with one SpotWarp license?</span>
+                    <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
+                </button>
+                <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
+                    One license protects <b>unlimited concurrent GPU instances</b> running on that machine. Whether you are training models across 2, 8, or 32 GPUs on Vast.ai or RunPod simultaneously, a single SpotWarp Pass ($49/mo) provides continuous background delta-sync and sub-minute failover for all of them.
+                </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="faq-item" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s;">
+                <button onclick="toggleFaq(this)" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: transparent; border: none; color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: left;">
+                    <span><i class="fa-solid fa-lock" style="color: var(--accent-green); margin-right: 10px;"></i> Are my Vast.ai and RunPod API keys safe?</span>
+                    <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
+                </button>
+                <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <b>100% Yes. Zero Cloud Key Storage.</b> SpotWarp is an open-core client daemon (<a href="https://github.com/enplabs/spotwarp" target="_blank" style="color: var(--accent-cyan); text-decoration: underline;">view GitHub source</a>) that runs entirely on your local machine or workstation. Your Vast.ai and RunPod API credentials stay 100% local in your environment and are never transmitted to our servers.
+                </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="faq-item" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s;">
+                <button onclick="toggleFaq(this)" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: transparent; border: none; color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: left;">
+                    <span><i class="fa-solid fa-hourglass-end" style="color: var(--accent-cyan); margin-right: 10px;"></i> What happens after the 14-day free trial ends?</span>
+                    <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
+                </button>
+                <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
+                    Your live GPU instances and training workloads will <b>never be interrupted or terminated</b>, and all synced checkpoints in your local <code>./backups</code> folder remain 100% safe. Only the automatic failover listener stops until you upgrade. When you subscribe, your existing license key is instantly converted to a paid active pass with zero command changes.
+                </div>
+            </div>
+
+            <!-- FAQ 4 -->
+            <div class="faq-item" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s;">
+                <button onclick="toggleFaq(this)" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: transparent; border: none; color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: left;">
+                    <span><i class="fa-solid fa-gauge-high" style="color: var(--accent-purple); margin-right: 10px;"></i> Does background delta-sync slow down training?</span>
+                    <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
+                </button>
+                <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <b>No.</b> SpotWarp utilizes an asynchronous delta-synchronization daemon that only transfers modified checkpoint slices. It operates in stealth background mode with low-priority I/O, consuming less than 0.1% CPU overhead without interfering with GPU CUDA compute streams.
+                </div>
             </div>
         </div>
     </section>
@@ -1141,6 +1202,64 @@
             const ctaBtn = document.getElementById('calcCtaBtn');
             if (ctaBtn) {
                 ctaBtn.innerHTML = `Start 14-Day Free Trial & Save ${formatCurrency(netMonthlySavings)}/mo <i class="fa-solid fa-arrow-right"></i>`;
+            }
+        }
+
+        // Install Tabs Switcher
+        function switchInstallTab(type) {
+            const tabLinux = document.getElementById('tab-linux');
+            const tabWin = document.getElementById('tab-win');
+            const tabPypi = document.getElementById('tab-pypi');
+            const cmdText = document.getElementById('installCommandText');
+
+            [tabLinux, tabWin, tabPypi].forEach(t => {
+                if (t) {
+                    t.style.background = 'rgba(255,255,255,0.05)';
+                    t.style.borderColor = 'rgba(255,255,255,0.15)';
+                    t.style.color = '#94a3b8';
+                }
+            });
+
+            if (type === 'linux') {
+                tabLinux.style.background = 'rgba(249,115,22,0.25)';
+                tabLinux.style.borderColor = 'var(--accent-orange)';
+                tabLinux.style.color = '#fff';
+                cmdText.innerText = 'curl -fsSL https://gpu-action.com/install.sh | bash';
+            } else if (type === 'win') {
+                tabWin.style.background = 'rgba(6,182,212,0.25)';
+                tabWin.style.borderColor = 'var(--accent-cyan)';
+                tabWin.style.color = '#fff';
+                cmdText.innerText = 'irm https://gpu-action.com/install.ps1 | iex';
+            } else if (type === 'pypi') {
+                tabPypi.style.background = 'rgba(16,185,129,0.25)';
+                tabPypi.style.borderColor = 'var(--accent-green)';
+                tabPypi.style.color = '#fff';
+                cmdText.innerText = 'pip install spotwarp && spotwarp init';
+            }
+        }
+
+        function copyActiveCommand() {
+            const text = document.getElementById('installCommandText').innerText;
+            navigator.clipboard.writeText(text);
+            alert('Command copied to clipboard!\n\n' + text);
+        }
+
+        // FAQ Toggle Accordion
+        function toggleFaq(btn) {
+            const item = btn.parentElement;
+            const answer = item.querySelector('.faq-answer');
+            const arrow = btn.querySelector('.faq-arrow');
+            const isOpen = answer.style.display === 'block';
+            
+            // Close all FAQs first
+            document.querySelectorAll('.faq-answer').forEach(a => a.style.display = 'none');
+            document.querySelectorAll('.faq-arrow').forEach(arr => arr.style.transform = 'rotate(0deg)');
+            document.querySelectorAll('.faq-item').forEach(it => it.style.borderColor = 'var(--card-border)');
+
+            if (!isOpen) {
+                answer.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+                item.style.borderColor = 'var(--accent-orange)';
             }
         }
 

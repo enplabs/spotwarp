@@ -304,7 +304,7 @@ footer a:hover{text-decoration:underline;}
     </div>
     <div class="decoder-row">
       <code>Monitoring 0 instances</code>
-      <div class="meaning"><span class="tag wait">Normal</span>No active GPU instance running on your Vast.ai account yet.</div>
+      <div class="meaning"><span class="tag wait">Normal</span>No active GPU instance running on your Vast.ai or RunPod account yet.</div>
     </div>
     <div class="decoder-row">
       <code>Triggering Failover Protocol</code>
@@ -323,7 +323,7 @@ footer a:hover{text-decoration:underline;}
     <thead><tr><th>You see</th><th>It means</th></tr></thead>
     <tbody>
       <tr><td>status 401</td><td>License key mistyped or concatenated with another key — re-copy it as one piece.</td></tr>
-      <tr><td>0 instances, GPU rented</td><td><code>VAST_API_KEY</code> isn't set in this window — re-run step 3 here.</td></tr>
+      <tr><td>0 instances, GPU rented</td><td><code>VAST_API_KEY</code> or <code>RUNPOD_API_KEY</code> isn't set in this window — re-run step 2 here.</td></tr>
       <tr><td><code>export</code> error</td><td>You're in PowerShell — use <code>$env:</code> instead.</td></tr>
       <tr><td>backups missing</td><td>Check <code>.\backups\&lt;instance_id&gt;\</code>, or your <code>--backup-dir</code> path.</td></tr>
     </tbody>

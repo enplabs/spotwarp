@@ -443,10 +443,14 @@ spotwarp stop     # Gracefully stop the background guard
 spotwarp config   # View your current local configuration</code></pre>
 
                     <div class="callout">
-                        <div class="callout-title"><i class="fa-solid fa-info"></i> Local Development Bypass</div>
+                        <div class="callout-title"><i class="fa-solid fa-shield-halved"></i> Any-to-Any Cross-Cloud Failover (v3.4.1)</div>
                         <p style="margin: 0; font-size: 0.9rem;">
-                            For local sandbox evaluation, you can bypass central licensing by passing the debug key <code>TRIAL_LOCAL_PASS</code> (or simply leaving the license blank during <code>spotwarp init</code>).
+                            SpotWarp supports seamless bidirectional failover between Vast.ai and RunPod. By default, it automatically sniffs both local keys and defaults to <code>--provider auto</code> and <code>--failover-policy same-cloud-first</code>. You can override this behavior explicitly via CLI flags:
                         </p>
+                        <ul style="margin: 8px 0 0 16px; font-size: 0.85rem; color: var(--text-muted);">
+                            <li><code>--provider auto|vast|runpod</code>: Force active monitoring to a specific cloud provider.</li>
+                            <li><code>--failover-policy same-cloud-first|vast-only|runpod-only</code>: Restrict failover targets to match your cloud budget or preference.</li>
+                        </ul>
                     </div>
 
                     <h3>Custom Backup Location</h3>
@@ -498,12 +502,12 @@ spotwarp config   # View your current local configuration</code></pre>
 
                     <h3>"License verification endpoint returned status 401"</h3>
                     <p>
-                        Your <code>--license-key</code> value doesn't match an active license. This is almost always a copy-paste issue — a prefix like <code>TRIAL_</code> got dropped, or two keys got concatenated together. Copy the full key directly from your trial confirmation or the <a href="/dashboard" target="_blank" style="color: var(--accent-cyan); text-decoration: underline;">Console Dashboard</a> and paste it in one piece.
+                        Your <code>--license-key</code> value doesn't match an active license. This is almost always a copy-paste issue — a prefix like <code>TRIAL_</code> got dropped, or two keys got concatenated together. Copy the full key directly from your confirmation email or the <a href="/dashboard" target="_blank" style="color: var(--accent-cyan); text-decoration: underline;">Console Dashboard</a> and paste it in one piece.
                     </p>
 
                     <h3>"Monitoring 0 instances"</h3>
                     <p>
-                        This is expected if you haven't rented a GPU on Vast.ai yet — see <a href="#rent-gpu" style="color: var(--accent-cyan); text-decoration: underline;">Rent Your GPU</a>. If you do have an instance running and it's still showing 0, double-check that <code>VAST_API_KEY</code> is set in the <em>same terminal window</em> you ran <code>spotwarp start</code> in — environment variables don't carry over to a new window.
+                        This is expected if you haven't rented a GPU on Vast.ai or RunPod yet — see <a href="#rent-gpu" style="color: var(--accent-cyan); text-decoration: underline;">Rent Your GPU</a>. If you do have an instance running and it's still showing 0, double-check that your API key (<code>VAST_API_KEY</code> or <code>RUNPOD_API_KEY</code>) is set in the <em>same terminal window</em> you ran <code>spotwarp start</code> in — environment variables don't carry over to a new window.
                     </p>
 
                     <div class="callout">

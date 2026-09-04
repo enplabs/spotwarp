@@ -30,7 +30,7 @@ RUNPOD_GPU_TYPE_MAP = {
 
 class RunPodGPUConnector:
     """
-    SpotWarp RunPod GPU Connector (v3.4)
+    SpotWarp RunPod GPU Connector (v3.4.1)
     Full Bidirectional GraphQL Client for Pod Monitoring, Deployment & Teardown.
     """
     def __init__(self, api_key=None):
@@ -375,7 +375,7 @@ class RunPodGPUConnector:
 
 if __name__ == "__main__":
     connector = RunPodGPUConnector()
-    print("[*] RunPod Connector v3.4 initialized.")
+    print("[*] RunPod Connector v3.4.1 initialized.")
     pods = connector.get_user_pods()
     print(f"[*] Current active user pods: {len(pods)}")
     for p in pods:

@@ -182,7 +182,7 @@ class GpuActionGuard:
             r = requests.post(
                 LICENSE_VERIFY_ENDPOINT,
                 json={"license_key": self.license_key},
-                headers={"User-Agent": "SpotWarp-Guard/3.4"},
+                headers={"User-Agent": "SpotWarp-Guard/3.4.1"},
                 timeout=10
             )
             if r.status_code == 200:
@@ -1121,7 +1121,7 @@ class GpuActionGuard:
                     requests.post(
                         f"{CENTRAL_SERVER}/api/v1/update_status",
                         json=payload,
-                        headers={"User-Agent": "SpotWarp-Guard/3.4"},
+                        headers={"User-Agent": "SpotWarp-Guard/3.4.1"},
                         timeout=5
                     )
                 except Exception:

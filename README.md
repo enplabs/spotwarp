@@ -16,7 +16,7 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ## 🆚 Spot GPU Eviction: Standard vs. SpotWarp
 
-| Feature | Standard Spot Instance | With SpotWarp (v3.4) |
+| Feature | Standard Spot Instance | With SpotWarp (v3.4.1) |
 | :--- | :--- | :--- |
 | **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
 | **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement in under a minute. |

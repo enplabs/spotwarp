@@ -123,9 +123,12 @@
             color: var(--text-main);
         }
 
+        .nav-links a.btn-primary,
+        a.btn-primary,
+        button.btn-primary,
         .btn-primary {
             background: linear-gradient(135deg, var(--accent-orange), #ea580c);
-            color: white;
+            color: #ffffff !important;
             padding: 12px 24px;
             border-radius: 8px;
             font-weight: 700;
@@ -645,10 +648,9 @@
             </a>
             <div class="nav-links">
                 <a href="#calculator">Savings Calculator</a>
-                <a href="#pricing">Pricing</a>
                 <a href="/quickstart">Setup Guide</a>
-                <a href="#pricing" class="btn-primary" style="text-decoration: none; padding: 10px 22px; font-weight: 700;">Get SpotWarp</a>
-                <button class="btn-primary" style="background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff;" onclick="openLoginModal()"><i class="fa-solid fa-terminal" style="color: var(--accent-orange);"></i> Console</button>
+                <a href="/docs">Docs</a>
+                <a href="#pricing" class="btn-primary" style="color: #ffffff !important; font-weight: 800; text-decoration: none; padding: 10px 24px; border-radius: 8px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);">Pricing</a>
             </div>
         </div>
     </header>
@@ -889,21 +891,47 @@
         <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px;">One Price, Per Machine</h2>
         <p style="color: var(--text-muted); margin-top: 8px;">No tiers, no per-GPU counting. One license protects everything running on that machine. Pay Vast.ai directly at wholesale spot cost — this is just the Guard subscription.</p>
 
-        <div class="pricing-cards" style="max-width: 420px;">
-            <div class="price-card popular">
-                <div style="position: absolute; top: -14px; right: 20px; background: var(--accent-orange); color: white; padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;">Everything Included</div>
-                <h4>SpotWarp Pass</h4>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Per machine, unlimited GPUs</p>
-                <div class="price">$49 <span>/ month</span></div>
-                <ul class="price-features">
-                    <li><i class="fa-solid fa-check"></i> Continuous Automatic Workspace Backup</li>
-                    <li><i class="fa-solid fa-check"></i> Parallel Candidate Racing (sub-minute failover)</li>
-                    <li><i class="fa-solid fa-check"></i> Cross-Cloud Bridge + Auto-Failback (Vast + RunPod)</li>
-                    <li><i class="fa-solid fa-check"></i> Real SSH-Verified Recovery</li>
-                    <li><i class="fa-solid fa-check"></i> Zero-Key Leakage Security</li>
-                    <li><i class="fa-solid fa-check"></i> Unlimited Concurrent Spot GPUs</li>
-                </ul>
-                <button class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);" onclick="subscribeNow('SpotWarp Pass ($49/mo)', this)"><i class="fa-solid fa-bolt"></i> Subscribe Now — $49 / mo</button>
+        <div class="pricing-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; max-width: 860px; margin: 30px auto 0;">
+            <!-- Monthly Plan Card -->
+            <div class="price-card" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 36px 28px; position: relative; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <h4 style="font-size: 1.35rem; font-weight: 800; color: #fff;">SpotWarp Monthly Pass</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Flexible monthly billing. Cancel anytime.</p>
+                    <div class="price" style="margin: 20px 0 16px; font-size: 2.8rem; font-weight: 800; color: #fff;">$49 <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ month</span></div>
+                    <ul class="price-features" style="list-style: none; padding: 0; margin: 0 0 28px; line-height: 2; font-size: 0.95rem;">
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Continuous Automatic Workspace Backup</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Parallel Candidate Racing (sub-minute)</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Cross-Cloud Bridge (Vast.ai ⇄ RunPod)</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Real SSH-Verified Recovery</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Zero-Key Leakage Security</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Unlimited Concurrent Spot GPUs</li>
+                    </ul>
+                </div>
+                <button class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; color: #ffffff !important; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);" onclick="subscribeNow('SpotWarp Monthly Pass ($49/mo)', this)">
+                    <i class="fa-solid fa-bolt"></i> Subscribe Monthly — $49 / mo
+                </button>
+            </div>
+
+            <!-- Annual Plan Card (Best Value) -->
+            <div class="price-card popular" style="background: rgba(16, 185, 129, 0.04); border: 2px solid #10b981; border-radius: 16px; padding: 36px 28px; position: relative; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 0 35px rgba(16, 185, 129, 0.15);">
+                <div style="position: absolute; top: -14px; right: 24px; background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 5px 16px; border-radius: 99px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(16,185,129,0.4);">Best Value • 2 Months Free</div>
+                <div>
+                    <h4 style="font-size: 1.35rem; font-weight: 800; color: #10b981;">SpotWarp Annual Pass</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Save 17% ($98/yr) with annual billing</p>
+                    <div class="price" style="margin: 20px 0 6px; font-size: 2.8rem; font-weight: 800; color: #fff;">$490 <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ year</span></div>
+                    <div style="font-size: 0.85rem; color: #10b981; font-weight: 700; margin-bottom: 16px;">⚡ Equivalent to $40.83 / month</div>
+                    <ul class="price-features" style="list-style: none; padding: 0; margin: 0 0 28px; line-height: 2; font-size: 0.95rem;">
+                        <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> <b>Everything in Monthly Pass included</b></li>
+                        <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> <b>2 Months Free ($98 instant savings)</b></li>
+                        <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> Continuous 365-day Auto-Protection</li>
+                        <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> Priority Cloud Inventory Allocation</li>
+                        <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> Zero-Key Leakage Security Guarantee</li>
+                        <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> Unlimited Concurrent Spot GPUs</li>
+                    </ul>
+                </div>
+                <button class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff !important; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);" onclick="subscribeNow('SpotWarp Annual Pass ($490/yr)', this)">
+                    <i class="fa-solid fa-bolt"></i> Subscribe Annual — $490 / yr
+                </button>
             </div>
         </div>
     </section>
@@ -987,50 +1015,10 @@
         </div>
     </footer>
 
-    <!-- Trial Request Modal -->
-    <div class="modal-overlay" id="trialModal" style="display: none !important;">
-        <div class="modal-card">
-            <span class="modal-close" onclick="closeTrialModal()">&times;</span>
-            <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;">Start 14-Day Free Trial</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">No credit card required. Receive your Trial License Key instantly.</p>
-            
-            <form id="trialForm" onsubmit="handleTrialSubmit(event)">
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" class="form-control" id="trialName" placeholder="e.g. Alex Rivera" required>
-                </div>
-                <div class="form-group">
-                    <label>Developer Email</label>
-                    <input type="email" class="form-control" id="trialEmail" placeholder="alex@company.ai" required>
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px;">
-                    Activate Free Trial Key <i class="fa-solid fa-bolt"></i>
-                </button>
-            </form>
-            <div id="trialResult" style="margin-top: 16px; display: none;"></div>
-        </div>
+    
     </div>
     
-    <!-- Console Login Modal -->
-    <div class="modal-overlay" id="loginModal">
-        <div class="modal-card" style="border-color: var(--accent-cyan); box-shadow: 0 0 35px rgba(6, 182, 212, 0.25);">
-            <span class="modal-close" onclick="closeLoginModal()">&times;</span>
-            <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; font-family: 'Outfit', sans-serif;">Console Login</h3>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">Enter your issued license key to access the live monitoring console.</p>
-            
-            <form action="/dashboard/login" method="POST">
-                <div class="form-group">
-                    <label>License Key</label>
-                    <input type="text" class="form-control" name="license_key" placeholder="gpu_act_sk_... or TRIAL_..." required style="font-family: monospace;">
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 14px; background: linear-gradient(135deg, var(--accent-cyan), #0891b2); box-shadow: 0 0 25px rgba(6, 182, 212, 0.2);">
-                    Enter Dashboard <i class="fa-solid fa-right-to-bracket"></i>
-                </button>
-            </form>
-            <div style="margin-top: 16px; text-align: center;">
-                <a href="#pricing" onclick="closeLoginModal();" style="color: var(--accent-orange); font-size: 0.85rem; text-decoration: none; font-weight: 600;">Get a SpotWarp License &rarr;</a>
-            </div>
-        </div>
+    
     </div>
 
     <script>
@@ -1044,21 +1032,7 @@
             alert("Docker pull command copied to clipboard!");
         }
 
-        function openTrialModal() {
-            document.getElementById('trialModal').style.display = 'flex';
-        }
 
-        function closeTrialModal() {
-            document.getElementById('trialModal').style.display = 'none';
-        }
-
-        function openLoginModal() {
-            document.getElementById('loginModal').style.display = 'flex';
-        }
-
-        function closeLoginModal() {
-            document.getElementById('loginModal').style.display = 'none';
-        }
 
         async function handleTrialSubmit(e) {
             e.preventDefault();
@@ -1271,7 +1245,6 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('error') === 'invalid_license') {
                 alert('Invalid or expired license key. Please check and try again.');
-                openLoginModal();
             }
         };
     </script>

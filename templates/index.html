@@ -647,7 +647,7 @@
                 <a href="#calculator">Savings Calculator</a>
                 <a href="#pricing">Pricing</a>
                 <a href="/quickstart">Setup Guide</a>
-                <button class="btn-primary" onclick="openTrialModal()">14-Day Free Trial</button>
+                <a href="#pricing" class="btn-primary" style="text-decoration: none; padding: 10px 22px; font-weight: 700;">Get SpotWarp</a>
                 <button class="btn-primary" style="background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); color: #fff;" onclick="openLoginModal()"><i class="fa-solid fa-terminal" style="color: var(--accent-orange);"></i> Console</button>
             </div>
         </div>
@@ -692,9 +692,9 @@
             </div>
 
             <div>
-                <button class="btn-primary" onclick="openTrialModal()" style="font-size: 1.1rem; padding: 16px 36px;">
-                    Start 14-Day Free Trial <i class="fa-solid fa-arrow-right"></i>
-                </button>
+                <a href="#pricing" class="btn-primary" style="font-size: 1.1rem; padding: 16px 36px; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; font-weight: 800;">
+                    <i class="fa-solid fa-bolt"></i> Get SpotWarp Pass <i class="fa-solid fa-arrow-right"></i>
+                </a>
             </div>
 
             <!-- 30s Live Terminal Failover Demo Animation -->
@@ -822,9 +822,9 @@
                 </div>
 
                 <div>
-                    <button class="btn-primary" id="calcCtaBtn" style="width: 100%; justify-content: center; padding: 15px; font-size: 1rem;" onclick="openTrialModal()">
-                        Start 14-Day Free Trial & Save <i class="fa-solid fa-arrow-right"></i>
-                    </button>
+                    <a href="#pricing" class="btn-primary" id="calcCtaBtn" style="width: 100%; justify-content: center; padding: 15px; font-size: 1rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 800;">
+                        <i class="fa-solid fa-bolt"></i> Protect My GPUs Now <i class="fa-solid fa-arrow-right"></i>
+                    </a>
                     <div style="text-align: center; margin-top: 10px; font-size: 0.78rem; color: #9ca3af;">
                         <i class="fa-solid fa-shield-halved" style="color: var(--accent-green);"></i> Continuous Local Backup & Eviction Guard Included
                     </div>
@@ -944,11 +944,11 @@
             <!-- FAQ 3 -->
             <div class="faq-item" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; overflow: hidden; transition: border-color 0.2s;">
                 <button onclick="toggleFaq(this)" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: transparent; border: none; color: #fff; font-size: 1.05rem; font-weight: 700; cursor: pointer; text-align: left;">
-                    <span><i class="fa-solid fa-hourglass-end" style="color: var(--accent-cyan); margin-right: 10px;"></i> What happens after the 14-day free trial ends?</span>
+                    <span><i class="fa-solid fa-shield-halved" style="color: var(--accent-cyan); margin-right: 10px;"></i> Can I cancel my subscription anytime?</span>
                     <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
                 </button>
                 <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
-                    Your live GPU instances and training workloads will <b>never be interrupted or terminated</b>, and all synced checkpoints in your local <code>./backups</code> folder remain 100% safe. Only the automatic failover listener stops until you upgrade. When you subscribe, your existing license key is instantly converted to a paid active pass with zero command changes.
+                    <b>Yes, absolutely.</b> There are no contracts or commitments. You can cancel your subscription at any time with a single click from your billing portal. Your SpotWarp license will remain fully active until the end of your paid billing period.
                 </div>
             </div>
 
@@ -988,7 +988,7 @@
     </footer>
 
     <!-- Trial Request Modal -->
-    <div class="modal-overlay" id="trialModal">
+    <div class="modal-overlay" id="trialModal" style="display: none !important;">
         <div class="modal-card">
             <span class="modal-close" onclick="closeTrialModal()">&times;</span>
             <h3 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 8px;">Start 14-Day Free Trial</h3>
@@ -1028,7 +1028,7 @@
                 </button>
             </form>
             <div style="margin-top: 16px; text-align: center;">
-                <a href="javascript:void(0)" onclick="closeLoginModal(); openTrialModal();" style="color: var(--accent-orange); font-size: 0.85rem; text-decoration: none; font-weight: 600;">Request Free Trial License &rarr;</a>
+                <a href="#pricing" onclick="closeLoginModal();" style="color: var(--accent-orange); font-size: 0.85rem; text-decoration: none; font-weight: 600;">Get a SpotWarp License &rarr;</a>
             </div>
         </div>
     </div>
@@ -1201,7 +1201,7 @@
 
             const ctaBtn = document.getElementById('calcCtaBtn');
             if (ctaBtn) {
-                ctaBtn.innerHTML = `Start 14-Day Free Trial & Save ${formatCurrency(netMonthlySavings)}/mo <i class="fa-solid fa-arrow-right"></i>`;
+                ctaBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Save ${formatCurrency(netMonthlySavings)}/mo with SpotWarp <i class="fa-solid fa-arrow-right"></i>`;
             }
         }
 

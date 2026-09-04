@@ -16,12 +16,12 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ## 🆚 Spot GPU Eviction: Standard vs. SpotWarp
 
-| Feature | Standard Spot Instance | With SpotWarp (v3.3) |
+| Feature | Standard Spot Instance | With SpotWarp (v3.4) |
 | :--- | :--- | :--- |
 | **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
 | **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement in under a minute. |
-| **If your cloud is out of stock** | Failover fails outright — nothing to migrate to. | **Cross-Cloud Bridge**. Automatically rents on RunPod as a fallback, spot pricing first, on-demand if spot isn't offered. |
-| **Paying bridge-cloud rates forever** | N/A | **Auto-Failback**. Watches for your original cloud's cheaper capacity to return and migrates you back automatically — the bridge cloud is never a permanent home. |
+| **If your cloud is out of stock** | Failover fails outright — nothing to migrate to. | **Any-to-Any Cross-Cloud Bridge**. Seamless cross-cloud failover across Vast.ai and RunPod in both directions (`Vast.ai ⇄ RunPod`). |
+| **Paying fallback-cloud rates forever** | N/A | **Bidirectional Auto-Failback**. Continuously checks your primary cloud and automatically repatriates the workload the moment lower-cost capacity returns. |
 | **Workload Continuation** | Restart training from epoch 0. | **Auto-Resume**. Script continues running via `nohup` over SSH, from where the backup left off. |
 | **Security Risk** | Requires placing S3/GitHub keys on unstable rented hosts. | **Zero Key Leakage**. All API keys remain on your local machine. |
 

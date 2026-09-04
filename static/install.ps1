@@ -14,7 +14,7 @@ Write-Host " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   " -ForegroundColo
 Write-Host "       |_|                                |_|      " -ForegroundColor Cyan
 Write-Host ""
 Write-Host "SpotWarp: Spot GPU Continuous Backup & Cross-Cloud Failover Daemon" -ForegroundColor White
-Write-Host "Version: v3.4.0" -ForegroundColor Green
+Write-Host "Version: v3.4.1" -ForegroundColor Green
 Write-Host ""
 
 # 1. Check Python
@@ -25,12 +25,12 @@ if (-not $pythonCmd) {
 }
 
 Write-Host "[*] Installing/Upgrading spotwarp via pip..." -ForegroundColor Cyan
-python -m pip install --upgrade --quiet "spotwarp>=3.4.0"
+python -m pip install --upgrade --quiet "spotwarp>=3.4.1"
 
 # 2. Check installation
 $spotwarpCmd = Get-Command spotwarp -ErrorAction SilentlyContinue
 if ($spotwarpCmd) {
-    Write-Host "[+] Successfully installed spotwarp v3.4.0!" -ForegroundColor Green
+    Write-Host "[+] Successfully installed spotwarp v3.4.1!" -ForegroundColor Green
 } else {
     Write-Host "[+] Installed spotwarp module. (Run via: python -m spotwarp or spotwarp)" -ForegroundColor Green
 }

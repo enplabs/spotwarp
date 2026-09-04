@@ -1281,7 +1281,7 @@ class GpuActionGuard:
             print("[SpotWarp Guard] Guard daemon stopped gracefully.")
 
 
-VERSION = "3.4.0"
+VERSION = "3.4.1"
 CONFIG_DIR = os.path.expanduser("~/.spotwarp")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")

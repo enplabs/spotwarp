@@ -37,6 +37,16 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(open(sys.stdout.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
     sys.stderr = io.TextIOWrapper(open(sys.stderr.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
 
+# Hardened SSL certificate resolution for C-compiled binary & frozen environments
+try:
+    import certifi
+    ca_bundle = certifi.where()
+    if ca_bundle and os.path.exists(ca_bundle):
+        os.environ.setdefault("SSL_CERT_FILE", ca_bundle)
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", ca_bundle)
+except ImportError:
+    pass
+
 CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
 TEMPLATE_HASH_ID = "5d762fad90ee6aa0f8636464e142ad29"
@@ -177,12 +187,17 @@ class GpuActionGuard:
         self.use_rsync = sys.platform != 'win32' and shutil.which("rsync") is not None
 
     def verify_license(self) -> bool:
-        """Verifies active subscription or 14-day trial status with central server."""
+        """Verifies active subscription with central server. Strict paid-only enforcement."""
+        if not self.license_key or not str(self.license_key).strip() or self.license_key == "TRIAL_LOCAL_PASS":
+            print("[SpotWarp Guard] Error: No valid license key provided.")
+            print("[SpotWarp Guard] SpotWarp requires an active subscription. Get your key at: https://gpu-action.com/pricing")
+            return False
+
         try:
             r = requests.post(
                 LICENSE_VERIFY_ENDPOINT,
                 json={"license_key": self.license_key},
-                headers={"User-Agent": "SpotWarp-Guard/3.4.1"},
+                headers={"User-Agent": "SpotWarp-Guard/3.4.2"},
                 timeout=10
             )
             if r.status_code == 200:
@@ -193,22 +208,17 @@ class GpuActionGuard:
                     print(f"[SpotWarp Guard] License Verified: Active ({self.plan})")
                     return True
                 else:
-                    print(f"[SpotWarp Guard] License Invalid or Expired: {data.get('message')}")
+                    print(f"[SpotWarp Guard] License Invalid or Expired: {data.get('message', 'Unregistered key')}")
+                    print("[SpotWarp Guard] Please verify your subscription at https://gpu-action.com/dashboard")
                     return False
             else:
                 print(f"[SpotWarp Guard] License verification endpoint returned status {r.status_code}.")
-                self.is_valid_license = True
-                # Can't confirm the real plan right now — default to the
-                # lower tier's limits rather than silently granting Scale
-                # Pass features (unlimited GPUs, cross-cloud bridge) to an
-                # unverified license.
-                self.plan = self.plan or "SpotWarp Pass ($49/mo)"
-                return True
+                print("[SpotWarp Guard] Unable to verify subscription with central server.")
+                return False
         except Exception as e:
-            print(f"[SpotWarp Guard] License verification warning: {e}. Running in local grace mode.")
-            self.is_valid_license = True
-            self.plan = self.plan or "SpotWarp Pass ($49/mo)"
-            return True
+            print(f"[SpotWarp Guard] License verification connection failed: {e}")
+            print(f"[SpotWarp Guard] Please check your network connection to {CENTRAL_SERVER}")
+            return False
 
     def check_vast_status(self) -> dict:
         """Pings Vast.ai API using the user's LOCAL API key."""
@@ -1121,7 +1131,7 @@ class GpuActionGuard:
                     requests.post(
                         f"{CENTRAL_SERVER}/api/v1/update_status",
                         json=payload,
-                        headers={"User-Agent": "SpotWarp-Guard/3.4.1"},
+                        headers={"User-Agent": "SpotWarp-Guard/3.4.2"},
                         timeout=5
                     )
                 except Exception:
@@ -1281,7 +1291,7 @@ class GpuActionGuard:
             print("[SpotWarp Guard] Guard daemon stopped gracefully.")
 
 
-VERSION = "3.4.1"
+VERSION = "3.4.2"
 CONFIG_DIR = os.path.expanduser("~/.spotwarp")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
@@ -1336,7 +1346,7 @@ def cmd_init():
     sniffed_vast, sniffed_runpod = sniff_local_api_keys()
 
     current_lic = cfg.get("license_key", "")
-    lic_prompt = f"Enter SpotWarp License Key [{current_lic[:10]}...]: " if current_lic else "Enter SpotWarp License Key (press Enter for Trial): "
+    lic_prompt = f"Enter SpotWarp License Key [{current_lic[:10]}...]: " if current_lic else "Enter SpotWarp License Key: "
     try:
         lic_in = input(lic_prompt).strip()
     except (EOFError, KeyboardInterrupt):
@@ -1345,7 +1355,9 @@ def cmd_init():
     if lic_in:
         cfg["license_key"] = lic_in
     elif not current_lic:
-        cfg["license_key"] = "TRIAL_LOCAL_PASS"
+        print("\n[!] License key is required. SpotWarp is a paid subscription tool.")
+        print("[!] Get your license key at: https://gpu-action.com/pricing\n")
+        return
 
     current_vast = cfg.get("vast_api_key", "") or sniffed_vast
     if sniffed_vast and not cfg.get("vast_api_key"):
@@ -1506,7 +1518,7 @@ def cmd_config():
     if not cfg and not sniffed_v:
         print("No configuration saved yet. Run 'spotwarp init' to configure.")
     else:
-        lic = cfg.get("license_key", "TRIAL_LOCAL_PASS")
+        lic = cfg.get("license_key") or "Not configured (run 'spotwarp init')"
         vast = cfg.get("vast_api_key", "") or sniffed_v
         runpod = cfg.get("runpod_api_key", "") or sniffed_r
         backup = cfg.get("backup_dir", "./backups")
@@ -1564,7 +1576,13 @@ def main():
         # If run as bare `spotwarp`, default to `start`
         cfg = load_config()
         sniffed_v, sniffed_r = sniff_local_api_keys()
-        lic = getattr(args, "license_key", None) or os.getenv("SPOTWARP_LICENSE") or cfg.get("license_key") or "TRIAL_LOCAL_PASS"
+        lic = getattr(args, "license_key", None) or os.getenv("SPOTWARP_LICENSE") or cfg.get("license_key")
+        if not lic or lic == "TRIAL_LOCAL_PASS":
+            print(f"\n[SpotWarp v{VERSION}] Error: Active license key is required.")
+            print("  1. Run 'spotwarp init' to enter your license key, or")
+            print("  2. Start with: spotwarp start --license-key <YOUR_KEY>")
+            print("  3. Don't have a key? Get one at: https://gpu-action.com/pricing\n")
+            sys.exit(1)
         vast_k = getattr(args, "vast_api_key", None) or os.getenv("VAST_API_KEY") or cfg.get("vast_api_key", "") or sniffed_v
         runpod_k = getattr(args, "runpod_api_key", None) or os.getenv("RUNPOD_API_KEY") or cfg.get("runpod_api_key", "") or sniffed_r
         resume_c = getattr(args, "resume_cmd", None) or cfg.get("resume_cmd")

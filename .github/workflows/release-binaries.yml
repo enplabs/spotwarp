@@ -1,0 +1,109 @@
+name: Build & Release Standalone Binaries (Nuitka C-Compiled)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Binary (${{ matrix.os }} - ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: x86_64
+            runner: ubuntu-20.04
+            output_name: spotwarp-linux-x86_64
+            binary_path: build-linux/spotwarp-linux-x86_64
+          - os: darwin
+            arch: arm64
+            runner: macos-14
+            output_name: spotwarp-darwin-arm64
+            binary_path: build-macos/spotwarp-darwin-arm64
+          - os: windows
+            arch: x64
+            runner: windows-latest
+            output_name: spotwarp-windows-x64.exe
+            binary_path: build-windows/spotwarp-windows-x64.exe
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Build Dependencies & Nuitka
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install nuitka zstandard ordered-set requests certifi
+
+      - name: Compile Standalone Binary via Nuitka (C-Engine)
+        run: |
+          python -m nuitka \
+            --standalone \
+            --onefile \
+            --assume-yes-for-downloads \
+            --include-package=requests \
+            --include-package=urllib3 \
+            --include-package-data=certifi \
+            --include-module=ssl \
+            --output-filename=${{ matrix.output_name }} \
+            --output-dir=dist-bin \
+            gpu_action_cli.py
+        shell: bash
+
+      - name: Verify Binary Execution
+        run: |
+          chmod +x dist-bin/${{ matrix.output_name }} 2>/dev/null || true
+          ./dist-bin/${{ matrix.output_name }} --version
+        shell: bash
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist-bin/${{ matrix.output_name }}
+          if-no-files-found: error
+
+  release:
+    name: Publish Release with All Binaries
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Download All Binary Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA256 Checksums
+        run: |
+          cd release-assets
+          ls -la
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+        shell: bash
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release-assets/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

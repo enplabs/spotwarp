@@ -65,11 +65,19 @@ jobs:
           ./dist-bin/${{ matrix.output_name }} --version
         shell: bash
 
+      - name: Package Windows ZIP Archive
+        if: matrix.os == 'windows'
+        run: |
+          cd dist-bin
+          cp ${{ matrix.output_name }} spotwarp.exe
+          powershell -Command "Compress-Archive -Path spotwarp.exe -DestinationPath spotwarp-windows-x64.zip -Force"
+        shell: bash
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist-bin/${{ matrix.output_name }}
+          path: dist-bin/*
           if-no-files-found: error
 
   release:

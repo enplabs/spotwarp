@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Activated — SpotWarp AI</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="https://gpu-action.com/">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #080B10;
+            --card-bg: #0F141C;
+            --card-inner: #161D27;
+            --text-light: #F8FAFC;
+            --text-muted: #94A3B8;
+            --primary: #00F0FF;
+            --primary-hover: #00C8D7;
+            --accent-purple: #7928CA;
+            --success: #10B981;
+            --border: #1E293B;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 30px 20px;
+            box-sizing: border-box;
+        }
+
+        .success-container {
+            max-width: 620px;
+            width: 100%;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 20px 70px rgba(0, 240, 255, 0.08);
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+        }
+
+        .success-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #00F0FF, #7928CA);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            padding: 36px 30px 24px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(0, 240, 255, 0.04) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 900;
+            color: #FFFFFF;
+            letter-spacing: -0.5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .logo span { color: var(--primary); }
+
+        .check-circle {
+            width: 64px;
+            height: 64px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 2px solid var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--success);
+            font-size: 28px;
+            margin: 0 auto 16px;
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.25);
+        }
+
+        h1 {
+            font-size: 26px;
+            margin: 0 0 8px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin: 0;
+        }
+
+        .body {
+            padding: 32px 30px;
+        }
+
+        .license-box {
+            background: var(--card-inner);
+            border: 1px solid #283344;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .license-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .key-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #0B0E14;
+            border: 1px solid #1E293B;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-family: monospace;
+            font-size: 15px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        .btn-copy {
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid var(--primary);
+            color: #FFFFFF;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-copy:hover {
+            background: var(--primary);
+            color: #000000;
+        }
+
+        .quickstart-box {
+            background: #0B0E14;
+            border: 1px solid #1E293B;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 28px;
+        }
+        .quickstart-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #F8FAFC;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .code-block {
+            background: #05070A;
+            border: 1px solid #161F2C;
+            border-radius: 6px;
+            padding: 14px;
+            font-family: "SFMono-Regular", Consolas, Monaco, monospace;
+            font-size: 13px;
+            color: #CBD5E1;
+            line-height: 1.6;
+            overflow-x: auto;
+        }
+        .code-comment { color: #64748B; }
+        .code-cmd { color: #00F0FF; font-weight: bold; }
+
+        .btn-primary {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            background: linear-gradient(135deg, #00F0FF 0%, #0070F3 100%);
+            color: #000000;
+            font-weight: 800;
+            font-size: 16px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            box-shadow: 0 4px 20px rgba(0, 240, 255, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 240, 255, 0.45);
+        }
+
+        .btn-secondary {
+            display: block;
+            text-align: center;
+            margin-top: 14px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .btn-secondary:hover {
+            color: #FFFFFF;
+            text-decoration: underline;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 13px;
+            color: #64748B;
+        }
+        .footer-note a { color: var(--primary); text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<div class="success-container">
+    <div class="header">
+        <a href="/" class="logo">
+            <i class="fa-solid fa-bolt" style="color: var(--primary);"></i> SPOT<span>WARP</span>
+        </a>
+        <div class="check-circle">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <h1>License Activated!</h1>
+        <p class="subtitle">Your Zero-Eviction Spot GPU Engine is now live.</p>
+    </div>
+
+    <div class="body">
+        <div class="license-box">
+            <div class="license-header">
+                <span>Active Subscription Details</span>
+                <span class="status-badge"><i class="fa-solid fa-shield-halved"></i> Active &bull; Verified</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; font-size: 13px;">
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Plan</span>
+                    <strong style="color: #FFFFFF;">Developer Pass ($49/mo)</strong>
+                </div>
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Billing</span>
+                    <strong style="color: var(--primary);">$49.00 USD / month</strong>
+                </div>
+            </div>
+            <div class="license-header" style="margin-top: 8px;">
+                <span>Your Production License Key</span>
+            </div>
+            <div class="key-display">
+                <span id="licKey">{{ license_key if license_key else 'gpu_act_sk_active_dev' }}</span>
+                <button class="btn-copy" onclick="copyKey()"><i class="fa-regular fa-copy"></i> Copy</button>
+            </div>
+        </div>
+
+        <div class="quickstart-box">
+            <div class="quickstart-title">
+                <i class="fa-solid fa-terminal" style="color: var(--primary);"></i> Quickstart: Attach to Your Training Cluster
+            </div>
+            <div class="code-block">
+                <span class="code-comment"># 1. Install SpotWarp CLI</span><br>
+                <span class="code-cmd">pip install spotwarp</span><br><br>
+                <span class="code-comment"># 2. Authenticate with your key</span><br>
+                <span class="code-cmd">spotwarp auth {{ license_key if license_key else '<YOUR_KEY>' }}</span><br><br>
+                <span class="code-comment"># 3. Launch with zero-eviction failover</span><br>
+                <span class="code-cmd">spotwarp run --gpu A100:8 --provider vastai --failover runpod train.py</span>
+            </div>
+        </div>
+
+        <a href="/dashboard" class="btn-primary">
+            <i class="fa-solid fa-gauge-high"></i> Open Live GPU Dashboard &rarr;
+        </a>
+        <a href="/quickstart" class="btn-secondary">
+            View Complete CLI &amp; Python SDK Docs
+        </a>
+
+        <div class="footer-note">
+            Receipt delivered via Stripe. Need priority engineering support? Email <a href="mailto:support@gpu-action.com">support@gpu-action.com</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyKey() {
+    const key = document.getElementById('licKey').innerText;
+    navigator.clipboard.writeText(key).then(() => {
+        const btn = document.querySelector('.btn-copy');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+        }, 2000);
+    });
+}
+</script>
+
+</body>
+</html>

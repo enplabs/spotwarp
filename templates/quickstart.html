@@ -202,7 +202,7 @@ footer a:hover{text-decoration:underline;}
 <div class="wrap">
 
 <header>
-  <div class="eyebrow">SpotWarp v3.4.1 Setup Guide</div>
+  <div class="eyebrow">SpotWarp v3.4.2 Setup Guide (Zero-Python C-Binary & PyPI)</div>
   <h1>Get <span>SpotWarp</span> running in 1 minute</h1>
   <p>Three simple steps. Your credentials stay 100% local — zero cloud key uploads.</p>
 </header>
@@ -211,9 +211,9 @@ footer a:hover{text-decoration:underline;}
   <div class="step-head">
     <div class="step-num">1</div>
     <h2>Install SpotWarp</h2>
-    <span class="step-sub">1-line universal installer</span>
+    <span class="step-sub">1-line universal installer (Zero-Python required)</span>
   </div>
-  <p class="lead">Run the 1-liner installer or use standard pip. No root or sudo required.</p>
+  <p class="lead">Run the 1-liner installer or download standalone C-binaries. <b>Python is 100% optional</b> — our standalone binaries run with zero dependencies.</p>
   <div class="two-col">
     <div class="code-panel">
       <div class="code-label"><b>Linux / macOS (1-Liner)</b></div>
@@ -224,8 +224,22 @@ footer a:hover{text-decoration:underline;}
       <pre>irm https://gpu-action.com/install.ps1 | iex</pre>
     </div>
   </div>
-  <div class="code-panel" style="margin-top: 12px;">
-    <div class="code-label"><b>Standard Python pip (Any OS)</b></div>
+
+  <!-- Direct Binary Download Buttons -->
+  <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+    <a href="https://github.com/enplabs/spotwarp/releases/download/v3.4.2/spotwarp-linux-x86_64" class="btn-bin" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; text-decoration: none; font-weight: 600;">
+      <i class="fa-brands fa-linux"></i> Linux x86_64 (13MB)
+    </a>
+    <a href="https://github.com/enplabs/spotwarp/releases/download/v3.4.2/spotwarp-darwin-arm64" class="btn-bin" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; text-decoration: none; font-weight: 600;">
+      <i class="fa-brands fa-apple"></i> macOS Apple Silicon (6MB)
+    </a>
+    <a href="https://github.com/enplabs/spotwarp/releases/download/v3.4.2/spotwarp-windows-x64.exe" class="btn-bin" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; text-decoration: none; font-weight: 600;">
+      <i class="fa-brands fa-windows"></i> Windows x64 EXE (6MB)
+    </a>
+  </div>
+
+  <div class="code-panel" style="margin-top: 14px;">
+    <div class="code-label"><b>Standard Python pip (Any OS / Docker)</b></div>
     <pre>pip install <span class="flag">--upgrade</span> spotwarp</pre>
   </div>
 </section>
@@ -233,16 +247,17 @@ footer a:hover{text-decoration:underline;}
 <section>
   <div class="step-head">
     <div class="step-num">2</div>
-    <h2>Zero-Config Setup</h2>
-    <span class="step-sub">100% local config</span>
+    <h2>Activate License & Cloud Keys</h2>
+    <span class="step-sub">1-minute local config</span>
   </div>
-  <p class="lead">SpotWarp automatically detects your existing Vast.ai and RunPod keys from local CLI configs (<code>~/.vast_api_key</code> / <code>~/.runpod/config.toml</code>). Or run the 1-minute setup wizard:</p>
+  <p class="lead">Run the 1-minute wizard to enter your <b>SpotWarp License Key</b> (from your receipt email / dashboard). Your Vast.ai and RunPod keys are auto-detected:</p>
   <div class="code-panel">
     <div class="code-label"><b>terminal (any OS)</b></div>
     <pre>spotwarp init</pre>
   </div>
   <div class="callout">
-    ✨ <b>Zero-Config Smart Sniffing:</b> If you already use Vast.ai or RunPod CLI, you can skip <code>spotwarp init</code> entirely and jump straight to Step 3!
+    ✨ <b>Direct 1-Line Start:</b> You can also pass your license key directly on daemon launch: <br>
+    <code>spotwarp start --license-key spw_live_your_key_here -d</code>
   </div>
 </section>
 

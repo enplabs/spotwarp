@@ -386,8 +386,25 @@
                 <section id="install" class="docs-section">
                     <h2>Installation</h2>
                     <p>
-                        Once you have a GPU instance running, install SpotWarp on your own local PC or orchestrator machine. If Python 3.8+ is installed, install the official package via Pip:
+                        Install SpotWarp on your local workstation or orchestrator. <b>Python is completely optional</b> — our standalone C-binaries run with zero external dependencies.
                     </p>
+                    
+                    <h3>Option A: Universal 1-Liner (Recommended)</h3>
+                    <pre><button class="btn-copy-code" onclick="copyText('curl -fsSL https://gpu-action.com/install.sh | bash')">Copy</button><code># Linux / macOS
+curl -fsSL https://gpu-action.com/install.sh | bash
+
+# Windows PowerShell
+irm https://gpu-action.com/install.ps1 | iex</code></pre>
+
+                    <h3>Option B: Standalone C-Binaries (GitHub Releases)</h3>
+                    <p>Pre-compiled standalone binaries with embedded C-engine are available directly on <a href="https://github.com/enplabs/spotwarp/releases/latest" target="_blank" style="color:var(--accent-cyan);">GitHub Releases</a>:</p>
+                    <ul>
+                        <li><b>Linux x86_64:</b> <code>spotwarp-linux-x86_64</code> (13MB, glibc 2.31+)</li>
+                        <li><b>macOS:</b> <code>spotwarp-darwin-arm64</code> (6MB, Apple Silicon)</li>
+                        <li><b>Windows:</b> <code>spotwarp-windows-x64.exe</code> (6MB)</li>
+                    </ul>
+
+                    <h3>Option C: PyPI Package (For Docker / Python Workflows)</h3>
                     <pre><button class="btn-copy-code" onclick="copyText('pip install --upgrade spotwarp')">Copy</button><code>pip install --upgrade spotwarp</code></pre>
                     
                     <h3>Windows Backup Transport</h3>

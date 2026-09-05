@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpotWarp | Creator & Affiliate Partner Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #030712;
+            --card-bg: rgba(17, 24, 39, 0.9);
+            --card-border: rgba(255, 255, 255, 0.1);
+            --accent-blue: #2563eb;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+        }
+        .header {
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .logo {
+            font-size: 22px;
+            font-weight: 800;
+            color: #fff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo span { color: var(--accent-blue); }
+        .badge {
+            font-size: 11px;
+            font-weight: 700;
+            background: rgba(37, 99, 235, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+            flex: 1;
+            width: 100%;
+        }
+        .login-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 36px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .login-card h2 { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+        .login-card p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+        .input-group {
+            display: flex;
+            max-width: 460px;
+            margin: 0 auto 16px;
+            gap: 8px;
+        }
+        .input-box {
+            flex: 1;
+            background: #0b1120;
+            border: 1px solid var(--card-border);
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+        }
+        .input-box:focus { border-color: var(--accent-blue); }
+        .btn-primary {
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        
+        /* Dashboard view */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+        .stat-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: left;
+        }
+        .stat-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .stat-val { font-size: 26px; font-weight: 800; color: #fff; margin-top: 6px; }
+        .stat-val.emerald { color: var(--accent-emerald); }
+        .stat-val.blue { color: #60a5fa; }
+        
+        .kit-box {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 24px;
+            text-align: left;
+        }
+        .kit-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #fff; display:flex; justify-content:space-between; align-items:center; }
+        .code-snippet {
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            color: #38bdf8;
+            word-break: break-all;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .copy-btn:hover { background: var(--accent-blue); }
+        .footer {
+            text-align: center;
+            padding: 24px;
+            font-size: 12px;
+            color: #64748b;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/" class="logo">Spot<span>Warp</span> <span class="badge">Partner Portal</span></a>
+        <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;"><i class="fa-solid fa-arrow-left"></i> Back to Main</a>
+    </div>
+
+    <div class="container">
+        <!-- Auth Box -->
+        <div id="auth-section" class="login-card">
+            <div style="font-size: 40px; margin-bottom: 12px; color: var(--accent-blue);"><i class="fa-solid fa-handshake"></i></div>
+            <h2>SpotWarp Creator & Partner Dashboard</h2>
+            <p>Enter your Creator Partner Tag or Pro License Key to view real-time subscriber referrals, monthly payout stats, and media kit.</p>
+            <form id="partner-login-form" onsubmit="loadPartnerStats(event)">
+                <div class="input-group">
+                    <input type="text" id="partner-input" class="input-box" placeholder="e.g. krishnaik or TRIAL_..." required>
+                    <button type="submit" class="btn-primary">Access Dashboard</button>
+                </div>
+            </form>
+            <p style="font-size: 12px; color: #64748b; margin-top: 10px;">Need a partner tag? Contact <a href="mailto:info@gpu-action.com" style="color: var(--accent-blue); text-decoration: none;">info@gpu-action.com</a></p>
+        </div>
+
+        <!-- Dashboard View (Initially Hidden) -->
+        <div id="dashboard-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
+                <div>
+                    <h2 id="partner-title" style="font-size: 24px; font-weight: 700;">Partner Dashboard</h2>
+                    <p style="color: var(--text-muted); font-size: 13.5px;">Real-time tracking of community conversions and recurring revenue share.</p>
+                </div>
+                <button onclick="logoutPartner()" class="copy-btn" style="padding: 6px 12px;">Switch Account</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Active Subscribers</div>
+                    <div id="stat-subscribers" class="stat-val blue">0</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Paying $49/mo Developer Pass</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Current Revenue Share</div>
+                    <div id="stat-rate" class="stat-val emerald">20%</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Tier 2 (Pro Creator Rate)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Estimated Monthly Payout</div>
+                    <div id="stat-monthly" class="stat-val emerald">$0.00</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Recurring on the 1st of every month</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Lifetime Earned</div>
+                    <div id="stat-lifetime" class="stat-val">$0.00</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Total processed commissions</div>
+                </div>
+            </div>
+
+            <!-- Your Custom Link -->
+            <div class="kit-box">
+                <h3><span>Your Custom Partner Tracking Link</span> <span class="badge" style="background:#065f46; color:#34d399; border-color:#059669;">Active</span></h3>
+                <div class="code-snippet">
+                    <span id="custom-link-text">https://gpu-action.com/?ref=...</span>
+                    <button class="copy-btn" onclick="copyText('custom-link-text')"><i class="fa-regular fa-copy"></i> Copy Link</button>
+                </div>
+            </div>
+
+            <!-- Ready to copy video description -->
+            <div class="kit-box">
+                <h3><span>YouTube Video Description Blurb</span> <button class="copy-btn" onclick="copyText('yt-desc-text')"><i class="fa-regular fa-copy"></i> Copy All</button></h3>
+                <div class="code-snippet" style="white-space: pre-wrap; font-size: 12px; line-height: 1.6;" id="yt-desc-text">⚡ Protect your Spot GPU runs from eviction with SpotWarp:
+👉 Get your Free License / Trial: <span id="custom-link-inline">https://gpu-action.com/?ref=...</span>
+• Continuous live auto-backup of checkpoints (.safetensors, .pt)
+• Instant cross-cloud failover (Vast.ai ⇄ RunPod) in &lt;60s
+• 100% open-core &amp; local CLI daemon (github.com/enplabs/spotwarp)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        SpotWarp &middot; ENPLABS VENTURES &middot; 2727 Steeles Ave West, Toronto, ON M3J 3G9, Canada &middot; <a href="mailto:info@gpu-action.com" style="color:#64748b;">info@gpu-action.com</a>
+    </div>
+
+    <script>
+        function loadPartnerStats(e) {
+            e.preventDefault();
+            const tag = document.getElementById('partner-input').value.trim().toLowerCase();
+            if (!tag) return;
+
+            fetch(`/api/v1/partner_stats?tag=${encodeURIComponent(tag)}`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('auth-section').style.display = 'none';
+                    document.getElementById('dashboard-section').style.display = 'block';
+                    
+                    document.getElementById('partner-title').innerText = `${data.creator_name || tag} Partner Dashboard`;
+                    document.getElementById('stat-subscribers').innerText = data.active_subscribers || 0;
+                    document.getElementById('stat-rate').innerText = `${Math.round((data.commission_rate || 0.2) * 100)}%`;
+                    document.getElementById('stat-monthly').innerText = `$${(data.monthly_payout || 0).toFixed(2)}`;
+                    document.getElementById('stat-lifetime').innerText = `$${(data.lifetime_earned || 0).toFixed(2)}`;
+                    
+                    const fullLink = `https://gpu-action.com/?ref=${encodeURIComponent(tag)}`;
+                    document.getElementById('custom-link-text').innerText = fullLink;
+                    document.getElementById('custom-link-inline').innerText = fullLink;
+                })
+                .catch(err => {
+                    alert("Could not load partner stats: " + err);
+                });
+        }
+
+        function logoutPartner() {
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('dashboard-section').style.display = 'none';
+        }
+
+        function copyText(elemId) {
+            const text = document.getElementById(elemId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Copied to clipboard!");
+            });
+        }
+    </script>
+</body>
+</html>

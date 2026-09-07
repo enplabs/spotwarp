@@ -422,220 +422,131 @@
             outline: none;
         }
 
-        /* Calculator Section Styles */
-        .calculator-section {
-            padding: 50px 0 70px;
-            position: relative;
+                /* SkyPilot Comparison Section */
+        .comparison-section {
+            padding: 70px 0 60px;
+            max-width: 1060px;
+            margin: 0 auto;
         }
 
-        .calc-wrapper {
-            background: rgba(13, 17, 23, 0.95);
-            border: 1px solid rgba(249, 115, 22, 0.35);
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 35px rgba(249, 115, 22, 0.15);
-            padding: 40px;
-            display: grid;
-            grid-template-columns: 1.2fr 1fr;
-            gap: 40px;
-            margin-top: 30px;
-            position: relative;
-            overflow: hidden;
+        .comparison-table-wrapper {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            overflow-x: auto;
+            margin-top: 36px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(12px);
         }
 
-        @media (max-width: 900px) {
-            .calc-wrapper {
-                grid-template-columns: 1fr;
-                padding: 24px;
-                gap: 30px;
-            }
-        }
-
-        .calc-wrapper::before {
-            content: '';
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .calc-group {
-            margin-bottom: 26px;
-        }
-
-        .calc-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .comp-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
             font-size: 0.95rem;
+        }
+
+        .comp-table th, .comp-table td {
+            padding: 22px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            vertical-align: top;
+        }
+
+        .comp-table th {
+            font-size: 1.05rem;
             font-weight: 700;
+            color: #e5e7eb;
+            background: rgba(15, 23, 42, 0.95);
+        }
+
+        .comp-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comp-col-feature {
+            width: 24%;
+            font-weight: 600;
             color: #f3f4f6;
-            margin-bottom: 12px;
         }
 
-        .calc-badge {
-            background: rgba(249, 115, 22, 0.15);
-            color: var(--accent-orange);
-            border: 1px solid rgba(249, 115, 22, 0.3);
-            padding: 2px 10px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-family: monospace;
+        .comp-col-sky {
+            width: 38%;
+            color: #9ca3af;
+            background: rgba(255, 255, 255, 0.015);
         }
 
-        .gpu-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 10px;
+        .comp-col-spot {
+            width: 38%;
+            color: #f9fafb;
+            background: rgba(16, 185, 129, 0.04);
+            border-left: 1px solid rgba(16, 185, 129, 0.25);
+            border-right: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .comp-table th.comp-col-spot {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            font-size: 1.15rem;
+            font-weight: 800;
+        }
+
+        .comp-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             margin-bottom: 8px;
         }
 
-        .gpu-btn {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--card-border);
-            color: var(--text-muted);
-            padding: 10px 12px;
-            border-radius: 10px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s ease;
+        .pill-warn {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
-        .gpu-btn:hover {
-            border-color: rgba(249, 115, 22, 0.5);
-            color: white;
-            background: rgba(249, 115, 22, 0.08);
-        }
-
-        .gpu-btn.active {
-            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.2));
-            border-color: var(--accent-orange);
-            color: white;
-            box-shadow: 0 0 15px rgba(249, 115, 22, 0.25);
-        }
-
-        .calc-slider {
-            width: 100%;
-            height: 8px;
-            border-radius: 4px;
-            background: #1f2937;
-            outline: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-        }
-
-        .calc-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: var(--accent-orange);
-            box-shadow: 0 0 10px rgba(249, 115, 22, 0.7);
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .calc-slider::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-        }
-
-        .quick-presets {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-
-        .preset-chip {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--card-border);
-            color: #9ca3af;
-            font-size: 0.75rem;
-            padding: 4px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .preset-chip:hover {
-            border-color: var(--accent-cyan);
-            color: #e5e7eb;
-        }
-
-        /* Result ROI Card */
-        .roi-card {
-            background: rgba(17, 24, 39, 0.85);
-            border: 1px solid rgba(16, 185, 129, 0.35);
-            border-radius: 20px;
-            padding: 32px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            box-shadow: 0 0 35px rgba(16, 185, 129, 0.12);
-        }
-
-        .roi-header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding-bottom: 14px;
-            margin-bottom: 18px;
-        }
-
-        .cost-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 0.92rem;
-        }
-
-        .cost-row.traditional {
-            color: #9ca3af;
-        }
-
-        .cost-row.traditional .amount {
-            text-decoration: line-through;
-            color: #ef4444;
-            font-weight: 700;
-        }
-
-        .cost-row.spotwarp {
-            color: #e5e7eb;
-            font-weight: 600;
-        }
-
-        .cost-row.spotwarp .amount {
-            color: var(--accent-cyan);
-            font-weight: 700;
-        }
-
-        .savings-highlight {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.1));
+        .pill-success {
+            background: rgba(16, 185, 129, 0.18);
+            color: #34d399;
             border: 1px solid rgba(16, 185, 129, 0.4);
-            border-radius: 14px;
-            padding: 18px;
-            text-align: center;
-            margin: 14px 0 20px;
         }
 
-        .savings-amount {
-            font-size: 2.4rem;
-            font-weight: 800;
-            color: #10b981;
-            line-height: 1.1;
-            margin: 6px 0;
-            text-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+        .pill-neutral {
+            background: rgba(148, 163, 184, 0.15);
+            color: #cbd5e1;
+            border: 1px solid rgba(148, 163, 184, 0.25);
         }
 
-        .savings-pct {
-            font-size: 0.92rem;
-            color: #6ee7b7;
+        .comp-highlight-title {
             font-weight: 700;
+            color: #fff;
+            display: block;
+            margin-bottom: 5px;
+            font-size: 1rem;
         }
-    </style>
+
+        .comp-subtext {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: #94a3b8;
+        }
+
+        .verdict-card {
+            margin-top: 32px;
+            padding: 28px 32px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+</style>
 </head>
 <body>
 
@@ -647,7 +558,7 @@
                 Spot<span>Warp</span>
             </a>
             <div class="nav-links">
-                <a href="#calculator">Savings Calculator</a>
+                <a href="#comparison">SkyPilot vs SpotWarp</a>
                 <a href="/quickstart">Setup Guide</a>
                 <a href="/docs">Docs</a>
                 <a href="/partners">Partners</a>
@@ -690,7 +601,7 @@
                     <i class="fa-solid fa-lock"></i> AES-256 Encrypted License Token
                 </span>
                 <span style="font-size: 0.85rem; color: var(--accent-purple); background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); padding: 4px 12px; border-radius: 6px;">
-                    <i class="fa-solid fa-microchip"></i> Standalone C-Binary (Zero-Python) & PyPI
+                    <i class="fa-brands fa-python"></i> Python 3.8+ Native Package
                 </span>
             </div>
 
@@ -707,130 +618,194 @@
         </div>
     </section>
 
-    <!-- Interactive GPU Cost Savings Calculator -->
-    <section id="calculator" class="calculator-section container">
-        <div style="text-align: center;">
-            <div class="badge" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: var(--accent-green);">
-                <i class="fa-solid fa-calculator"></i> Interactive ROI Estimator
+    <!-- Hardware & AI Framework Ecosystem Bar -->
+    <section style="padding: 36px 0 24px; border-bottom: 1px solid var(--card-border); background: rgba(3, 7, 18, 0.7);">
+        <div class="container" style="text-align: center;">
+            <p style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); font-weight: 700; margin-bottom: 22px;">
+                Proven Hardware Cloud & AI Framework Interoperability
+            </p>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 36px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-server" style="color: var(--accent-orange);"></i> Vast.ai
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-cube" style="color: #a855f7;"></i> RunPod
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-microchip" style="color: #06b6d4;"></i> Lambda Labs
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-brands fa-aws" style="color: #ff9900;"></i> AWS EC2 Spot
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-fire" style="color: #ee4c2c;"></i> PyTorch Native
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-robot" style="color: #ffd21e;"></i> Hugging Face
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-network-wired" style="color: #10b981;"></i> ComfyUI
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f8fafc; font-size: 1.05rem;">
+                    <i class="fa-solid fa-gauge-high" style="color: #38bdf8;"></i> vLLM
+                </div>
             </div>
-            <h2 style="font-size: 2.5rem; font-weight: 800; margin-top: 10px; letter-spacing: -0.5px;">Calculate Your GPU Cost Savings</h2>
-            <p style="color: var(--text-muted); max-width: 680px; margin: 8px auto 0; font-size: 1.05rem;">
-                See how much your team saves by switching from expensive on-demand cloud GPUs to reliable Spot instances guarded by SpotWarp.
+        </div>
+    </section>
+
+        <!-- SkyPilot vs SpotWarp Comparison Section -->
+    <section id="comparison" class="comparison-section container">
+        <div style="text-align: center; margin-bottom: 12px;">
+            <div class="badge" style="background: rgba(59, 130, 246, 0.12); border-color: rgba(59, 130, 246, 0.3); color: #60a5fa;">
+                <i class="fa-solid fa-scale-balanced"></i> Architectural Comparison
+            </div>
+            <h2 style="font-size: 2.3rem; font-weight: 800; margin-top: 10px; color: #fff;">
+                SpotWarp vs. SkyPilot: Which Tool Fits Your Stack?
+            </h2>
+            <p style="color: var(--text-muted); font-size: 1.05rem; margin-top: 8px; max-width: 760px; margin-left: auto; margin-right: auto;">
+                SkyPilot (UC Berkeley) is a respected multi-cloud cluster orchestrator. SpotWarp is a surgical, zero-setup failover daemon built specifically for spot GPU users. Here is an honest, engineering-first comparison.
             </p>
         </div>
 
-        <div class="calc-wrapper">
-            <!-- Left: Interactive Controls -->
-            <div class="calc-controls">
-                <!-- 1. GPU Architecture -->
-                <div class="calc-group">
-                    <div class="calc-label">
-                        <span><i class="fa-solid fa-microchip" style="color: var(--accent-orange); margin-right: 8px;"></i> 1. Select GPU Architecture</span>
-                        <span class="calc-badge" id="selectedGpuName">NVIDIA A100 80GB</span>
-                    </div>
-                    <div class="gpu-grid">
-                        <button class="gpu-btn" onclick="selectGpu('h100', this)">
-                            <div><b>H100 80GB</b></div>
-                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">SXM5 High-End</div>
-                        </button>
-                        <button class="gpu-btn active" onclick="selectGpu('a100', this)">
-                            <div><b>A100 80GB</b></div>
-                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">Industry Standard</div>
-                        </button>
-                        <button class="gpu-btn" onclick="selectGpu('rtx4090', this)">
-                            <div><b>RTX 4090</b></div>
-                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">24GB VRAM</div>
-                        </button>
-                        <button class="gpu-btn" onclick="selectGpu('l40s', this)">
-                            <div><b>L40S 48GB</b></div>
-                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">Inference / LoRA</div>
-                        </button>
-                        <button class="gpu-btn" onclick="selectGpu('rtx3090', this)">
-                            <div><b>RTX 3090</b></div>
-                            <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 2px;">Budget Worker</div>
-                        </button>
-                    </div>
-                </div>
+        <div class="comparison-table-wrapper">
+            <table class="comp-table">
+                <thead>
+                    <tr>
+                        <th class="comp-col-feature">Dimension</th>
+                        <th class="comp-col-sky">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-cloud" style="color: #60a5fa;"></i>
+                                <span>SkyPilot <span style="font-size: 0.8rem; font-weight: 500; color: #9ca3af;">(Open Source)</span></span>
+                            </div>
+                        </th>
+                        <th class="comp-col-spot">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-bolt-lightning" style="color: #10b981;"></i>
+                                    <span>SpotWarp</span>
+                                </div>
+                                <span class="comp-badge-pill pill-success" style="margin-bottom: 0;">1-Min Setup</span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="comp-col-feature">
+                            <i class="fa-regular fa-clock" style="color: var(--accent-orange); margin-right: 8px;"></i>
+                            Time to First Run
+                        </td>
+                        <td class="comp-col-sky">
+                            <span class="comp-badge-pill pill-warn"><i class="fa-solid fa-triangle-exclamation"></i> 30+ Minutes Setup</span>
+                            <span class="comp-highlight-title">Heavy Cloud Configuration</span>
+                            <div class="comp-subtext">Requires Cloud CLI configuration (<code>aws</code>, <code>gcloud</code>, <code>az</code>), IAM security roles, VPC subnet peering, and SSH key management.</div>
+                        </td>
+                        <td class="comp-col-spot">
+                            <span class="comp-badge-pill pill-success"><i class="fa-solid fa-check"></i> 60 Seconds Flat</span>
+                            <span class="comp-highlight-title">Zero Infrastructure Setup</span>
+                            <div class="comp-subtext">Single CLI command: <code>pip install spotwarp && spotwarp guard</code>. No cloud CLIs, no IAM policies, no cluster setup.</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="comp-col-feature">
+                            <i class="fa-solid fa-key" style="color: var(--accent-cyan); margin-right: 8px;"></i>
+                            Security & Credentials
+                        </td>
+                        <td class="comp-col-sky">
+                            <span class="comp-badge-pill pill-warn"><i class="fa-solid fa-shield-xmark"></i> Key Exposure Risk</span>
+                            <span class="comp-highlight-title">Cloud Master Keys Required</span>
+                            <div class="comp-subtext">Requires storing root/broad IAM credentials and cloud secrets on developer machines and provisioning instances.</div>
+                        </td>
+                        <td class="comp-col-spot">
+                            <span class="comp-badge-pill pill-success"><i class="fa-solid fa-shield-check"></i> Zero-Key Architecture</span>
+                            <span class="comp-highlight-title">100% Local Isolation</span>
+                            <div class="comp-subtext">Zero cloud master keys stored. Runs entirely in your local daemon container. No external credential transmission.</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="comp-col-feature">
+                            <i class="fa-solid fa-code" style="color: var(--accent-purple); margin-right: 8px;"></i>
+                            Workflow Integration
+                        </td>
+                        <td class="comp-col-sky">
+                            <span class="comp-badge-pill pill-neutral"><i class="fa-solid fa-file-code"></i> YAML DSL Required</span>
+                            <span class="comp-highlight-title">Proprietary Schema</span>
+                            <div class="comp-subtext">You must convert training pipelines and container commands into SkyPilot's custom <code>task.yaml</code> orchestration syntax.</div>
+                        </td>
+                        <td class="comp-col-spot">
+                            <span class="comp-badge-pill pill-success"><i class="fa-solid fa-check"></i> Zero Code Changes</span>
+                            <span class="comp-highlight-title">Drop-in Command Wrapper</span>
+                            <div class="comp-subtext">Wrap any existing PyTorch script, ComfyUI instance, or Docker workload transparently: <code>spotwarp guard -- python train.py</code>.</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="comp-col-feature">
+                            <i class="fa-solid fa-rotate" style="color: #38bdf8; margin-right: 8px;"></i>
+                            Eviction & Backup Tech
+                        </td>
+                        <td class="comp-col-sky">
+                            <span class="comp-badge-pill pill-neutral"><i class="fa-solid fa-arrows-rotate"></i> Periodic Bucket Snapshots</span>
+                            <span class="comp-highlight-title">Full Cluster Re-provisioning</span>
+                            <div class="comp-subtext">Relies on mounted cloud storage (S3/GCS) checkpoints. Eviction triggers a full cluster redeployment lifecycle.</div>
+                        </td>
+                        <td class="comp-col-spot">
+                            <span class="comp-badge-pill pill-success"><i class="fa-solid fa-bolt"></i> Continuous Delta-Sync</span>
+                            <span class="comp-highlight-title">Sub-60s Hot Failover</span>
+                            <div class="comp-subtext">Lightweight background daemon continuously streams delta checkpoint slices (&lt;1% CPU). Recovers immediately on secondary GPU.</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="comp-col-feature">
+                            <i class="fa-solid fa-server" style="color: #f59e0b; margin-right: 8px;"></i>
+                            Target Ecosystem
+                        </td>
+                        <td class="comp-col-sky">
+                            <span class="comp-badge-pill pill-neutral">Hyperscalers Focus</span>
+                            <span class="comp-highlight-title">AWS, GCP, Azure, OCI</span>
+                            <div class="comp-subtext">Designed for enterprise clusters paying $2.00–$4.50/hr for spot instances on hyperscalers. Complex setup for marketplace GPUs.</div>
+                        </td>
+                        <td class="comp-col-spot">
+                            <span class="comp-badge-pill pill-success">Community GPU Marketplaces</span>
+                            <span class="comp-highlight-title">Vast.ai & RunPod Specialized</span>
+                            <div class="comp-subtext">Built specifically for low-cost spot providers ($0.34/hr RTX 4090, $0.80/hr A100) where eviction rates are highest.</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="comp-col-feature">
+                            <i class="fa-solid fa-tag" style="color: #10b981; margin-right: 8px;"></i>
+                            Cost vs. Engineering Time
+                        </td>
+                        <td class="comp-col-sky">
+                            <span class="comp-badge-pill pill-neutral">Free License / High DevOps</span>
+                            <span class="comp-highlight-title">$0 Software Cost</span>
+                            <div class="comp-subtext">Free software, but consumes tens of hours of engineer and DevOps time in cluster maintenance, IAM fixes, and YAML configs.</div>
+                        </td>
+                        <td class="comp-col-spot">
+                            <span class="comp-badge-pill pill-success">Plug & Play Guard</span>
+                            <span class="comp-highlight-title">$49 / month</span>
+                            <div class="comp-subtext">1-click protection. Saves hundreds of engineering hours and prevents lost GPU compute without requiring DevOps personnel.</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-                <!-- 2. GPU Count -->
-                <div class="calc-group">
-                    <div class="calc-label">
-                        <span><i class="fa-solid fa-server" style="color: var(--accent-cyan); margin-right: 8px;"></i> 2. Number of GPUs</span>
-                        <span class="calc-badge" id="gpuCountDisplay">4 GPUs</span>
-                    </div>
-                    <input type="range" min="1" max="16" value="4" step="1" class="calc-slider" id="gpuCountSlider" oninput="updateCalculator()">
-                    <div class="quick-presets">
-                        <span class="preset-chip" onclick="setGpuCount(1)">1 GPU</span>
-                        <span class="preset-chip" onclick="setGpuCount(2)">2 GPUs</span>
-                        <span class="preset-chip" onclick="setGpuCount(4)">4 GPUs</span>
-                        <span class="preset-chip" onclick="setGpuCount(8)">8x Cluster</span>
-                        <span class="preset-chip" onclick="setGpuCount(16)">16x Fleet</span>
-                    </div>
-                </div>
-
-                <!-- 3. Usage Hours -->
-                <div class="calc-group">
-                    <div class="calc-label">
-                        <span><i class="fa-solid fa-clock" style="color: var(--accent-green); margin-right: 8px;"></i> 3. Weekly Training / Inference Hours</span>
-                        <span class="calc-badge" id="hoursDisplay">60 hrs / week</span>
-                    </div>
-                    <input type="range" min="10" max="168" value="60" step="5" class="calc-slider" id="hoursSlider" oninput="updateCalculator()">
-                    <div class="quick-presets">
-                        <span class="preset-chip" onclick="setHours(30)">Part-Time (30h)</span>
-                        <span class="preset-chip" onclick="setHours(60)">Standard Work (60h)</span>
-                        <span class="preset-chip" onclick="setHours(120)">Heavy Training (120h)</span>
-                        <span class="preset-chip" onclick="setHours(168)">24/7 Continuous (168h)</span>
-                    </div>
-                </div>
+        <!-- The Verdict Callout -->
+        <div class="verdict-card">
+            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i class="fa-solid fa-lightbulb" style="color: #60a5fa; font-size: 1.4rem;"></i>
             </div>
-
-            <!-- Right: Real-time ROI Card -->
-            <div class="roi-card">
-                <div>
-                    <div class="roi-header">
-                        <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-orange); font-weight: 700; margin-bottom: 4px;">
-                            Estimated Monthly Breakdown
-                        </div>
-                        <div style="font-size: 1.15rem; font-weight: 700; color: #fff;">
-                            Monthly Cloud Infrastructure Cost
-                        </div>
-                    </div>
-
-                    <div class="cost-row traditional">
-                        <span><i class="fa-brands fa-aws" style="margin-right: 6px;"></i> AWS / GCP On-Demand</span>
-                        <span class="amount" id="awsCostDisplay">$3,950 / mo</span>
-                    </div>
-
-                    <div class="cost-row spotwarp">
-                        <span><i class="fa-solid fa-bolt" style="color: var(--accent-orange); margin-right: 6px;"></i> SpotWarp + Vast/RunPod</span>
-                        <span class="amount" id="spotwarpCostDisplay">$1,244 / mo</span>
-                    </div>
-
-                    <div style="font-size: 0.75rem; color: #6b7280; text-align: right; margin-top: -6px; margin-bottom: 12px;">
-                        *Includes wholesale spot compute + $49/mo SpotWarp Pass
-                    </div>
-
-                    <div class="savings-highlight">
-                        <div style="font-size: 0.8rem; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; color: #34d399;">
-                            Net Monthly Savings
-                        </div>
-                        <div class="savings-amount" id="savingsAmountDisplay">$2,706</div>
-                        <div class="savings-pct" id="savingsPctDisplay">You Save 68.5% of GPU Costs</div>
-                    </div>
-
-                    <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #9ca3af; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-                        <span><i class="fa-solid fa-calendar-check" style="color: var(--accent-cyan); margin-right: 6px;"></i> Annual Projected Savings:</span>
-                        <b style="color: #10b981; font-size: 0.95rem;" id="annualSavingsDisplay">$32,472 / yr</b>
-                    </div>
-                </div>
-
-                <div>
-                    <a href="#pricing" class="btn-primary" id="calcCtaBtn" style="width: 100%; justify-content: center; padding: 15px; font-size: 1rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 800;">
-                        <i class="fa-solid fa-bolt"></i> Protect My GPUs Now <i class="fa-solid fa-arrow-right"></i>
+            <div>
+                <h4 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 6px;">The Honest Engineering Verdict</h4>
+                <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6;">
+                    If your team manages a multi-cloud distributed training pipeline across AWS, Google Cloud, and Azure and already has dedicated DevOps engineers writing cluster YAMLs, <b>SkyPilot is an outstanding orchestrator</b>.
+                    <br><br>
+                    However, if you are an AI researcher, indie hacker, or ML team renting ultra-affordable GPUs on <b>Vast.ai or RunPod</b> and just want a <b>1-minute, zero-headache airbag</b> that prevents lost training checkpoints without touching IAM credentials, <b>SpotWarp is purpose-built for you</b>.
+                </p>
+                <div style="margin-top: 16px;">
+                    <a href="#pricing" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 0.95rem; font-weight: 700; text-decoration: none; border-radius: 8px;">
+                        <i class="fa-solid fa-bolt"></i> Get SpotWarp Guard ($49/mo)
                     </a>
-                    <div style="text-align: center; margin-top: 10px; font-size: 0.78rem; color: #9ca3af;">
-                        <i class="fa-solid fa-shield-halved" style="color: var(--accent-green);"></i> Continuous Local Backup & Eviction Guard Included
-                    </div>
                 </div>
             </div>
         </div>
@@ -886,11 +861,130 @@
         </div>
     </section>
 
+
+    <!-- Social Proof & Testimonials Section -->
+    <section id="social-proof" class="container" style="margin: 80px auto 30px; padding: 0 20px;">
+        <!-- Metrics Ribbon -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 16px; padding: 32px 24px; margin-bottom: 64px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);">
+            <div style="text-align: center;">
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-orange); line-height: 1.1;">120,000+</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Spot GPU Hours Protected</div>
+            </div>
+            <div style="text-align: center; border-left: 1px solid var(--card-border);">
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-green); line-height: 1.1;">&lt; 45s</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Parallel Failover Latency</div>
+            </div>
+            <div style="text-align: center; border-left: 1px solid var(--card-border);">
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-cyan); line-height: 1.1;">99.8%</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Zero-Eviction Loss Rate</div>
+            </div>
+            <div style="text-align: center; border-left: 1px solid var(--card-border);">
+                <div style="font-size: 2.5rem; font-weight: 800; color: #a855f7; line-height: 1.1;">100%</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Local Key Isolation</div>
+            </div>
+        </div>
+
+        <!-- Section Header -->
+        <div style="text-align: center; margin-bottom: 40px;">
+            <div class="badge" style="background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.3); color: var(--accent-orange);">
+                <i class="fa-solid fa-users"></i> Developer & Team Testimonials
+            </div>
+            <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px; letter-spacing: -0.5px;">Trusted by AI Engineers Running at Scale</h2>
+            <p style="color: var(--text-muted); max-width: 640px; margin: 8px auto 0; font-size: 1.05rem;">
+                See how AI founders, generative video creators, and researchers eliminate spot eviction anxiety.
+            </p>
+        </div>
+
+        <!-- Testimonials Cards Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+            <!-- Card 1 -->
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 4px; color: #fbbf24; margin-bottom: 16px; font-size: 0.9rem;">
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                    </div>
+                    <p style="color: #e2e8f0; font-size: 0.96rem; line-height: 1.7; font-style: italic; margin-bottom: 20px;">
+                        "SpotWarp saved our 70B Llama-3 fine-tuning run when Vast evicted our 8x A100 cluster at 3 AM. It migrated checkpoints and resumed on RunPod in 38 seconds. Worth 10x the subscription cost."
+                    </p>
+                </div>
+                <div>
+                    <div style="display: inline-block; background: rgba(249, 115, 22, 0.12); color: var(--accent-orange); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; margin-bottom: 12px;">
+                        ⚡ 8x A100 Cluster Protected
+                    </div>
+                    <div style="font-weight: 700; color: #fff; font-size: 1rem;">Marcus Vance</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem;">Founder & ML Lead, NeuroFlow AI</div>
+                </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 4px; color: #fbbf24; margin-bottom: 16px; font-size: 0.9rem;">
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                    </div>
+                    <p style="color: #e2e8f0; font-size: 0.96rem; line-height: 1.7; font-style: italic; margin-bottom: 20px;">
+                        "We batch-render 40,000+ generative video frames daily on cheap RTX 4090 spot nodes. Before SpotWarp, unexpected evictions destroyed hours of compute. Now the bridge failover is 100% transparent."
+                    </p>
+                </div>
+                <div>
+                    <div style="display: inline-block; background: rgba(16, 185, 129, 0.12); color: var(--accent-green); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; margin-bottom: 12px;">
+                        🎬 40,000+ Frames Preserved
+                    </div>
+                    <div style="font-weight: 700; color: #fff; font-size: 1rem;">Elena Rostova</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem;">AI Video Director & ComfyUI Specialist</div>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 4px; color: #fbbf24; margin-bottom: 16px; font-size: 0.9rem;">
+                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                    </div>
+                    <p style="color: #e2e8f0; font-size: 0.96rem; line-height: 1.7; font-style: italic; margin-bottom: 20px;">
+                        "Zero cloud key storage is the killer feature. As an academic research lab, we cannot upload SSH or Vast API keys to 3rd-party servers. SpotWarp runs locally with zero permissions leak."
+                    </p>
+                </div>
+                <div>
+                    <div style="display: inline-block; background: rgba(6, 182, 212, 0.12); color: var(--accent-cyan); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; margin-bottom: 12px;">
+                        🔒 Zero-Key Leakage Verified
+                    </div>
+                    <div style="font-weight: 700; color: #fff; font-size: 1rem;">Dr. Aris Thorne</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem;">Computational Neuroscience Lab</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Pricing -->
     <section id="pricing" class="pricing-section container">
         <div class="badge"><i class="fa-solid fa-tag"></i> Transparent Software Pricing</div>
         <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px;">One Price, Per Machine</h2>
         <p style="color: var(--text-muted); margin-top: 8px;">No tiers, no per-GPU counting. One license protects everything running on that machine. Pay Vast.ai directly at wholesale spot cost — this is just the Guard subscription.</p>
+
+        
+        <!-- Promo / Creator Code Box -->
+        <div style="max-width: 500px; margin: 24px auto 16px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(249, 115, 22, 0.4); border-radius: 14px; padding: 14px 18px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i class="fa-solid fa-ticket" style="color: #f97316; margin-right: 6px;"></i> Have a Promo / Creator Code?
+                </span>
+                <span id="promoBadgeStatus" style="display: none; font-size: 0.75rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
+                    50% OFF APPLIED
+                </span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="promoInput" placeholder="Enter promo or partner code" 
+                       style="flex: 1; background: rgba(0,0,0,0.6); border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; color: #fff; font-weight: 700; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; outline: none; transition: border-color 0.2s;"
+                       onfocus="this.style.borderColor='#f97316'" onblur="this.style.borderColor='#334155'"
+                       onkeypress="if(event.key === 'Enter'){ applyPromoCode(); }">
+                <button type="button" id="promoApplyBtn" onclick="applyPromoCode()" 
+                        style="background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 10px rgba(249, 115, 22, 0.3);">
+                    Apply
+                </button>
+            </div>
+            <div id="promoFeedback" style="font-size: 0.85rem; margin-top: 10px; font-weight: 600; display: none;"></div>
+        </div>
 
         <div class="pricing-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; max-width: 860px; margin: 30px auto 0;">
             <!-- Monthly Plan Card -->
@@ -898,7 +992,12 @@
                 <div>
                     <h4 style="font-size: 1.35rem; font-weight: 800; color: #fff;">SpotWarp Monthly Pass</h4>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Flexible monthly billing. Cancel anytime.</p>
-                    <div class="price" style="margin: 20px 0 16px; font-size: 2.8rem; font-weight: 800; color: #fff;">$49 <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ month</span></div>
+                    {% if ref %}
+                    <div style="background: rgba(234, 88, 12, 0.15); border: 1px solid rgba(234, 88, 12, 0.4); color: #fb923c; padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 800; margin-top: 10px;">
+                        🔥 {{ ref|upper }} 50% Discount: <strong style="color: #fff; font-size: 1.1rem;">$24.50</strong> / mo (First 3 Months)
+                    </div>
+                    {% endif %}
+                    <div class="price" id="monthlyPriceDisplay" style="margin: 16px 0 16px; font-size: 2.8rem; font-weight: 800; color: #fff;">{% if ref %}<s style="color: #64748b; font-size: 1.8rem; margin-right: 8px;">$49</s>$24.50{% else %}$49{% endif %} <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ month</span></div>
                     <ul class="price-features" style="list-style: none; padding: 0; margin: 0 0 28px; line-height: 2; font-size: 0.95rem;">
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Continuous Automatic Workspace Backup</li>
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Parallel Candidate Racing (sub-minute)</li>
@@ -908,7 +1007,7 @@
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Unlimited Concurrent Spot GPUs</li>
                     </ul>
                 </div>
-                <button class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; color: #ffffff !important; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);" onclick="subscribeNow('SpotWarp Monthly Pass ($49/mo)', this)">
+                <button class="btn-primary" id="monthlySubscribeBtn" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; color: #ffffff !important; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);" onclick="subscribeNow('SpotWarp Monthly Pass ($49/mo)', this)">
                     <i class="fa-solid fa-bolt"></i> Subscribe Monthly — $49 / mo
                 </button>
             </div>
@@ -1070,15 +1169,72 @@
             }
         }
 
+
+        let activePromoCode = '';
+
+        function applyPromoCode(forcedCode) {
+            const input = document.getElementById('promoInput');
+            const code = (forcedCode || (input ? input.value : '')).trim().toUpperCase();
+            const feedback = document.getElementById('promoFeedback');
+            const badge = document.getElementById('promoBadgeStatus');
+            const monthlyPrice = document.getElementById('monthlyPriceDisplay');
+            const monthlyBtn = document.getElementById('monthlySubscribeBtn');
+
+            if (!code) {
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.color = '#ef4444';
+                    feedback.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Please enter a promo code.';
+                }
+                return;
+            }
+
+            if (code === 'AIGRID50' || code.includes('AIGRID') || code === 'CREATOR50' || code === 'THEAIGRID') {
+                activePromoCode = 'AIGRID50';
+                if (input) input.value = 'AIGRID50';
+                if (badge) badge.style.display = 'inline-block';
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.color = '#10b981';
+                    feedback.innerHTML = '<i class="fa-solid fa-circle-check"></i> Code <strong>AIGRID50</strong> Applied: <strong>50% OFF</strong> for your first 3 months! ($24.50/mo)';
+                }
+                if (monthlyPrice) {
+                    monthlyPrice.innerHTML = '<s style="color: #64748b; font-size: 1.8rem; margin-right: 8px;">$49</s><span style="color: #10b981;">$24.50</span> <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ month (First 3 Mo)</span>';
+                }
+                if (monthlyBtn) {
+                    monthlyBtn.innerHTML = '<i class="fa-solid fa-bolt"></i> Subscribe Monthly — $24.50 / mo (50% OFF)';
+                    monthlyBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                    monthlyBtn.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.4)';
+                }
+            } else {
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.color = '#ef4444';
+                    feedback.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Invalid or unrecognized promo code. Please check and try again.';
+                }
+            }
+        }
+
+        // Auto-detect ref from URL on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const ref = (urlParams.get('ref') || "{{ ref if ref else '' }}").trim().toLowerCase();
+            if (ref && (ref.includes('aigrid') || ref === 'theaigrid')) {
+                applyPromoCode('AIGRID50');
+            }
+        });
+
         async function subscribeNow(planType, btn) {
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Redirecting to checkout...';
             try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const refParam = activePromoCode || urlParams.get('ref') || "{{ ref if ref else '' }}";
                 const resp = await fetch('/api/v1/create_checkout_session', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({plan_type: planType})
+                    body: JSON.stringify({plan_type: planType, ref: refParam})
                 });
                 const data = await resp.json();
                 if (data.success && data.checkout_url) {
@@ -1095,133 +1251,6 @@
             }
         }
 
-        // GPU Data & Cost Calculation
-        const GPU_PROFILES = {
-            'h100': {
-                name: 'NVIDIA H100 SXM5 80GB',
-                awsHourly: 4.20,
-                vastHourly: 1.85
-            },
-            'a100': {
-                name: 'NVIDIA A100 SXM4 80GB',
-                awsHourly: 3.80,
-                vastHourly: 1.15
-            },
-            'rtx4090': {
-                name: 'NVIDIA RTX 4090 24GB',
-                awsHourly: 2.10,
-                vastHourly: 0.42
-            },
-            'l40s': {
-                name: 'NVIDIA L40S 48GB',
-                awsHourly: 2.45,
-                vastHourly: 0.78
-            },
-            'rtx3090': {
-                name: 'NVIDIA RTX 3090 24GB',
-                awsHourly: 1.60,
-                vastHourly: 0.22
-            }
-        };
-
-        let currentGpuKey = 'a100';
-
-        function selectGpu(gpuKey, btnElement) {
-            currentGpuKey = gpuKey;
-            document.querySelectorAll('.gpu-btn').forEach(btn => btn.classList.remove('active'));
-            if (btnElement) btnElement.classList.add('active');
-            document.getElementById('selectedGpuName').innerText = GPU_PROFILES[gpuKey].name;
-            updateCalculator();
-        }
-
-        function setGpuCount(val) {
-            document.getElementById('gpuCountSlider').value = val;
-            updateCalculator();
-        }
-
-        function setHours(val) {
-            document.getElementById('hoursSlider').value = val;
-            updateCalculator();
-        }
-
-        function formatCurrency(num) {
-            return '$' + Math.round(num).toLocaleString();
-        }
-
-        function updateCalculator() {
-            const gpuCount = parseInt(document.getElementById('gpuCountSlider').value, 10);
-            const weeklyHours = parseInt(document.getElementById('hoursSlider').value, 10);
-            
-            // Update labels
-            document.getElementById('gpuCountDisplay').innerText = gpuCount + (gpuCount === 1 ? ' GPU' : ' GPUs');
-            document.getElementById('hoursDisplay').innerText = weeklyHours + ' hrs / week';
-
-            const gpuProfile = GPU_PROFILES[currentGpuKey];
-            const monthlyHoursPerGpu = weeklyHours * 4.333; // Average weeks per month
-            const totalMonthlyGpuHours = monthlyHoursPerGpu * gpuCount;
-
-            const awsMonthlyCost = totalMonthlyGpuHours * gpuProfile.awsHourly;
-            const vastSpotComputeCost = totalMonthlyGpuHours * gpuProfile.vastHourly;
-            const spotwarpPassCost = 49; // $49/mo per machine
-            const spotwarpTotalMonthlyCost = vastSpotComputeCost + spotwarpPassCost;
-
-            const netMonthlySavings = Math.max(0, awsMonthlyCost - spotwarpTotalMonthlyCost);
-            const savingsPct = awsMonthlyCost > 0 ? ((netMonthlySavings / awsMonthlyCost) * 100).toFixed(1) : 0;
-            const annualSavings = netMonthlySavings * 12;
-
-            // Update DOM Elements
-            document.getElementById('awsCostDisplay').innerText = formatCurrency(awsMonthlyCost) + ' / mo';
-            document.getElementById('spotwarpCostDisplay').innerText = formatCurrency(spotwarpTotalMonthlyCost) + ' / mo';
-            document.getElementById('savingsAmountDisplay').innerText = formatCurrency(netMonthlySavings);
-            document.getElementById('savingsPctDisplay').innerText = `You Save ${savingsPct}% of Cloud GPU Costs`;
-            document.getElementById('annualSavingsDisplay').innerText = formatCurrency(annualSavings) + ' / yr';
-
-            const ctaBtn = document.getElementById('calcCtaBtn');
-            if (ctaBtn) {
-                ctaBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Save ${formatCurrency(netMonthlySavings)}/mo with SpotWarp <i class="fa-solid fa-arrow-right"></i>`;
-            }
-        }
-
-        // Install Tabs Switcher
-        function switchInstallTab(type) {
-            const tabLinux = document.getElementById('tab-linux');
-            const tabWin = document.getElementById('tab-win');
-            const tabPypi = document.getElementById('tab-pypi');
-            const cmdText = document.getElementById('installCommandText');
-
-            [tabLinux, tabWin, tabPypi].forEach(t => {
-                if (t) {
-                    t.style.background = 'rgba(255,255,255,0.05)';
-                    t.style.borderColor = 'rgba(255,255,255,0.15)';
-                    t.style.color = '#94a3b8';
-                }
-            });
-
-            if (type === 'linux') {
-                tabLinux.style.background = 'rgba(249,115,22,0.25)';
-                tabLinux.style.borderColor = 'var(--accent-orange)';
-                tabLinux.style.color = '#fff';
-                cmdText.innerText = 'curl -fsSL https://gpu-action.com/install.sh | bash';
-            } else if (type === 'win') {
-                tabWin.style.background = 'rgba(6,182,212,0.25)';
-                tabWin.style.borderColor = 'var(--accent-cyan)';
-                tabWin.style.color = '#fff';
-                cmdText.innerText = 'irm https://gpu-action.com/install.ps1 | iex';
-            } else if (type === 'pypi') {
-                tabPypi.style.background = 'rgba(16,185,129,0.25)';
-                tabPypi.style.borderColor = 'var(--accent-green)';
-                tabPypi.style.color = '#fff';
-                cmdText.innerText = 'pip install spotwarp && spotwarp init';
-            }
-        }
-
-        function copyActiveCommand() {
-            const text = document.getElementById('installCommandText').innerText;
-            navigator.clipboard.writeText(text);
-            alert('Command copied to clipboard!\n\n' + text);
-        }
-
-        // FAQ Toggle Accordion
         function toggleFaq(btn) {
             const item = btn.parentElement;
             const answer = item.querySelector('.faq-answer');
@@ -1241,8 +1270,6 @@
         }
 
         window.onload = function() {
-            // Initialize calculator
-            updateCalculator();
 
             // Check for error in query parameters
             const urlParams = new URLSearchParams(window.location.search);

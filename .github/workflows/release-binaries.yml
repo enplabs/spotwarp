@@ -70,14 +70,22 @@ jobs:
         run: |
           cd dist-bin
           cp ${{ matrix.output_name }} spotwarp.exe
-          powershell -Command "Compress-Archive -Path spotwarp.exe -DestinationPath spotwarp-windows-x64.zip -Force"
+          cp ../packaging/README.txt README.txt
+          powershell -Command "Compress-Archive -Path spotwarp.exe,README.txt -DestinationPath spotwarp-windows-x64.zip -Force"
+          rm spotwarp.exe README.txt
+          ls -la
         shell: bash
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist-bin/*
+          # Only the shipped files. dist-bin/ also holds Nuitka's *.build / *.dist /
+          # *.onefile-build working folders; uploading those made `sha256sum *` fail
+          # on directories and blocked the v3.4.3 release.
+          path: |
+            dist-bin/${{ matrix.output_name }}
+            dist-bin/spotwarp-windows-x64.zip
           if-no-files-found: error
 
   release:
@@ -98,7 +106,7 @@ jobs:
         run: |
           cd release-assets
           ls -la
-          sha256sum * > SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS.txt
           cat SHA256SUMS.txt
         shell: bash
 

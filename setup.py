@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="spotwarp",
-    version="3.4.2",
-    description="Never lose a training run to a Spot GPU eviction: continuous automatic backup + sub-minute cross-cloud failover for Vast.ai & RunPod",
+    version="3.4.3",
+    description="Never lose a training run to a Spot GPU eviction: continuous automatic backup + automatic failover to a replacement GPU on Vast.ai & RunPod",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="SpotWarp Team",

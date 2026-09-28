@@ -23,7 +23,7 @@ echo " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   "
 echo "       |_|                                |_|      "
 echo -e "${RESET}"
 echo -e "${BOLD}SpotWarp: Spot GPU Continuous Backup & Cross-Cloud Failover Daemon${RESET}"
-echo -e "Version: ${GREEN}v3.4.2${RESET}\n"
+echo -e "Version: ${GREEN}v3.4.3${RESET}\n"
 
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
@@ -72,20 +72,20 @@ if [ $BINARY_INSTALLED -eq 0 ]; then
 
     INSTALL_SUCCESS=0
     # Tier 1: Standard pip install
-    if python3 -m pip install --upgrade --quiet "spotwarp>=3.4.2" 2>/dev/null; then
+    if python3 -m pip install --upgrade --quiet "spotwarp>=3.4.3" 2>/dev/null; then
         INSTALL_SUCCESS=1
     fi
 
     # Tier 2: PEP 668 bypass (--break-system-packages)
     if [ $INSTALL_SUCCESS -eq 0 ]; then
-        if python3 -m pip install --upgrade --break-system-packages --quiet "spotwarp>=3.4.2" 2>/dev/null; then
+        if python3 -m pip install --upgrade --break-system-packages --quiet "spotwarp>=3.4.3" 2>/dev/null; then
             INSTALL_SUCCESS=1
         fi
     fi
 
     # Tier 3: User mode
     if [ $INSTALL_SUCCESS -eq 0 ]; then
-        if python3 -m pip install --user --upgrade --break-system-packages --quiet "spotwarp>=3.4.2" 2>/dev/null; then
+        if python3 -m pip install --user --upgrade --break-system-packages --quiet "spotwarp>=3.4.3" 2>/dev/null; then
             INSTALL_SUCCESS=1
         fi
     fi
@@ -102,7 +102,7 @@ if [ $BINARY_INSTALLED -eq 0 ]; then
         echo -e "${YELLOW}[*] Setting up isolated venv at ~/.spotwarp/venv...${RESET}"
         mkdir -p "$HOME/.spotwarp"
         if python3 -m venv "$HOME/.spotwarp/venv" 2>/dev/null; then
-            if "$HOME/.spotwarp/venv/bin/pip" install --upgrade --quiet "spotwarp>=3.4.2" 2>/dev/null; then
+            if "$HOME/.spotwarp/venv/bin/pip" install --upgrade --quiet "spotwarp>=3.4.3" 2>/dev/null; then
                 ln -sf "$HOME/.spotwarp/venv/bin/spotwarp" "$INSTALL_DIR/spotwarp"
                 INSTALL_SUCCESS=1
             fi
@@ -148,7 +148,7 @@ elif [ -f "$HOME/.runpod_api_key" ]; then
 fi
 
 echo -e "\n${BOLD}================================================================${RESET}"
-echo -e "${GREEN}[+] SpotWarp v3.4.2 is READY!${RESET}"
+echo -e "${GREEN}[+] SpotWarp v3.4.3 is READY!${RESET}"
 if [ -n "$SNIFFED_VAST" ]; then
     echo -e "${GREEN}    ? Auto-detected Vast.ai API Key (${SNIFFED_VAST})${RESET}"
 fi

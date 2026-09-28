@@ -140,6 +140,16 @@ def get_ssh_endpoint(inst: dict):
         pass
     return inst.get('ssh_host'), inst.get('ssh_port')
 
+# Replacement image when the evicted instance's own launch config is unknown.
+# The previous default (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime, ~3.4 GB)
+# is not pre-pulled on most Vast hosts any more: a 2026-09-28 end-to-end test
+# raced 4 RTX 3090 replacements and all 4 were still pulling it when the boot
+# timeout hit, and a separate probe was still pulling at 301s. Vast's own
+# vastai/pytorch image is what their recommended PyTorch template runs, so it
+# is widely cached — template instances on it booted in 30-60s the same day.
+DEFAULT_REPLACEMENT_IMAGE = "vastai/pytorch:cuda-12.8.1-auto"
+DEFAULT_REPLACEMENT_MIN_CUDA = 12.4  # the vastai/pytorch "auto" tag needs a 12.4+ driver
+
 class GpuActionGuard:
     def __init__(self, license_key: str, vast_api_key: str = None, runpod_api_key: str = None, resume_cmd: str = None, backup_dir: str = None, provider: str = "auto", failover_policy: str = "same-cloud-first"):
         sniffed_v, sniffed_r = sniff_local_api_keys()
@@ -152,6 +162,13 @@ class GpuActionGuard:
         self.headers = {"Accept": "application/json", "Authorization": f"Bearer {self.vast_api_key}"}
         self.is_valid_license = False
         self.tracked_instances = {}  # maps instance_id -> (host, ssh_port, host_id, gpu_name)
+        # vast instance_id -> how it was launched (template / image / disk), so a
+        # replacement comes up in the same environment the workload was running in.
+        self.launch_specs = {}
+        # Evictions are handled in parallel threads (one per evicted instance),
+        # so two instances lost at the same moment don't queue behind each other.
+        self.failover_lock = threading.Lock()
+        self.inflight_failovers = set()
         self.backup_threads = {}
         self.stop_events = {}
         # Instances currently parked on RunPod because Vast had zero
@@ -197,7 +214,7 @@ class GpuActionGuard:
             r = requests.post(
                 LICENSE_VERIFY_ENDPOINT,
                 json={"license_key": self.license_key},
-                headers={"User-Agent": "SpotWarp-Guard/3.4.2"},
+                headers={"User-Agent": f"SpotWarp-Guard/{VERSION}"},
                 timeout=10
             )
             if r.status_code == 200:
@@ -473,7 +490,67 @@ class GpuActionGuard:
         except Exception as e:
             print(f"[-] Handover failed to launch resume command: {e}")
 
-    def _search_vast_candidates(self, match_token: str, exclude_host_id=None):
+    def _remember_launch_spec(self, inst_key: str, inst: dict):
+        """Records how a Vast instance was launched, from the fields Vast's
+        instances API returns (template_hash_id, image_uuid, disk_space)."""
+        self.launch_specs[inst_key] = {
+            "template_hash_id": inst.get("template_hash_id"),
+            "image": inst.get("image_uuid"),
+            "disk": inst.get("disk_space"),
+            "cuda": inst.get("cuda_max_good"),  # replacement host must be at least this new
+        }
+
+    def _replacement_payload(self, spec):
+        """Rent payload for a failover replacement, plus the minimum host CUDA
+        version it needs (None = no extra constraint).
+
+        Priority: the evicted instance's own template (same image, ports,
+        onstart as the user chose) -> its own image -> DEFAULT_REPLACEMENT_IMAGE.
+        """
+        spec = spec or {}
+        disk = max(int(spec.get("disk") or 0), 20)
+        image = spec.get("image") or DEFAULT_REPLACEMENT_IMAGE
+        # vastai/pytorch "auto" needs a 12.4+ driver; for any other image the only
+        # safe floor we know is the CUDA version it was already running on.
+        if image.startswith("vastai/pytorch"):
+            min_cuda = DEFAULT_REPLACEMENT_MIN_CUDA
+        else:
+            min_cuda = float(spec["cuda"]) if spec.get("cuda") else None
+        if spec.get("template_hash_id"):
+            return {"template_hash_id": spec["template_hash_id"], "disk": disk,
+                    "label": "spotwarp-failover-replacement"}, min_cuda
+        return {
+            "image": image,
+            "disk": disk,
+            "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
+            "label": "spotwarp-failover-replacement",
+            # Confirmed via live testing: with a plain pytorch image, Vast's
+            # ssh_direct runtype alone does not reliably start sshd (a
+            # bare ubuntu image worked fine under the same runtype, so
+            # that image's own entrypoint isn't being fully replaced).
+            # Belt-and-suspenders: explicitly start sshd ourselves.
+            #
+            # Second bug found live-testing A100/H100 tiers specifically
+            # (2026-08-06, not present on the RTX 3060/3090 tiers tested
+            # earlier): on these hosts' Ubuntu 24.04 base image, Vast's
+            # own key-injection writes /root/.ssh/authorized_keys with
+            # permissions sshd's StrictModes rejects ("bad ownership or
+            # modes"), even though the key content itself is correct —
+            # every connection attempt failed "Permission denied
+            # (publickey)" despite the right key being present. Loop-wait
+            # for the file to appear (Vast's injection is asynchronous
+            # relative to our onstart), then fix its permissions.
+            "onstart": (
+                "for i in $(seq 1 60); do "
+                "if [ -f /root/.ssh/authorized_keys ]; then "
+                "chmod 700 /root/.ssh; chmod 600 /root/.ssh/authorized_keys; "
+                "chown root:root /root/.ssh /root/.ssh/authorized_keys; "
+                "break; fi; sleep 2; done; "
+                "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
+            ),
+        }, min_cuda
+
+    def _search_vast_candidates(self, match_token: str, exclude_host_id=None, min_cuda=None):
         """Searches Vast.ai for rentable offers matching a GPU model token.
 
         Shared by handle_failover (finding a replacement for an eviction)
@@ -524,12 +601,13 @@ class GpuActionGuard:
                     and 'laptop' not in o.get('gpu_name', '').lower()
                     and o.get('host_id') != exclude_host_id
                     and o.get('verification') == 'verified'
+                    and (min_cuda is None or (o.get('cuda_max_good') or 0) >= min_cuda)
                 ]
         except Exception:
             pass
         return candidate_offers
 
-    def _race_rent_vast_candidates(self, candidate_offers):
+    def _race_rent_vast_candidates(self, candidate_offers, spec=None):
         """Races up to RACE_SIZE Vast.ai candidate offers concurrently and
         returns (new_id, new_host, new_port, new_inst) for the cheapest one
         that becomes SSH-reachable, or None if none did.
@@ -542,7 +620,12 @@ class GpuActionGuard:
         RunPod."
         """
         RACE_SIZE = 4
-        BOOT_TIMEOUT_SECONDS = 300
+        # 300s was not enough for hosts that still have to pull the image
+        # (2026-09-28: 4/4 candidates timed out). The race still takes the
+        # first reachable host, so a longer ceiling only matters when every
+        # candidate is slow — exactly the case where giving up loses the run.
+        BOOT_TIMEOUT_SECONDS = 420
+        payload_template, _ = self._replacement_payload(spec)
         SSH_CHECK_TIMEOUT_SECONDS = 60
         GRACE_PERIOD_SECONDS = 15
 
@@ -574,36 +657,7 @@ class GpuActionGuard:
             print(f"[+] Racing candidate {attempt_num}/{RACE_SIZE}: Offer {offer_id}: {gpu_name} at ${price:.3f}/hr on Host {offer.get('host_id')}")
 
             rent_url = f"https://console.vast.ai/api/v0/asks/{offer_id}/"
-            payload = {
-                "image": "pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime",
-                "disk": 20,
-                "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
-                "label": "spotwarp-failover-replacement",
-                # Confirmed via live testing: with this pytorch image, Vast's
-                # ssh_direct runtype alone does not reliably start sshd (a
-                # bare ubuntu image worked fine under the same runtype, so
-                # this image's own entrypoint isn't being fully replaced).
-                # Belt-and-suspenders: explicitly start sshd ourselves.
-                #
-                # Second bug found live-testing A100/H100 tiers specifically
-                # (2026-08-06, not present on the RTX 3060/3090 tiers tested
-                # earlier): on these hosts' Ubuntu 24.04 base image, Vast's
-                # own key-injection writes /root/.ssh/authorized_keys with
-                # permissions sshd's StrictModes rejects ("bad ownership or
-                # modes"), even though the key content itself is correct —
-                # every connection attempt failed "Permission denied
-                # (publickey)" despite the right key being present. Loop-wait
-                # for the file to appear (Vast's injection is asynchronous
-                # relative to our onstart), then fix its permissions.
-                "onstart": (
-                    "for i in $(seq 1 60); do "
-                    "if [ -f /root/.ssh/authorized_keys ]; then "
-                    "chmod 700 /root/.ssh; chmod 600 /root/.ssh/authorized_keys; "
-                    "chown root:root /root/.ssh /root/.ssh/authorized_keys; "
-                    "break; fi; sleep 2; done; "
-                    "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
-                )
-            }
+            payload = dict(payload_template)
             try:
                 rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
             except Exception as e:
@@ -756,12 +810,35 @@ class GpuActionGuard:
             return None
         return (winner['id'], winner['host'], winner['port'], winner['inst'])
 
+    def _dispatch_failover(self, evicted_key, evicted_host_id, evicted_gpu, provider):
+        """Stops tracking the evicted instance and runs its failover in a
+        background thread, so the polling loop keeps watching (and failing
+        over) every other instance in the meantime."""
+        self.tracked_instances.pop(evicted_key, None)
+        with self.failover_lock:
+            if evicted_key in self.inflight_failovers:
+                return
+            self.inflight_failovers.add(evicted_key)
+
+        def run():
+            try:
+                self.handle_failover(evicted_key, evicted_host_id, evicted_gpu, provider=provider)
+            except Exception as e:
+                print(f"[-] Failover for {evicted_key} crashed: {e}")
+            finally:
+                with self.failover_lock:
+                    self.inflight_failovers.discard(evicted_key)
+
+        threading.Thread(target=run, daemon=True, name=f"failover-{evicted_key}").start()
+
     def handle_failover(self, evicted_id: str, evicted_host_id: any, evicted_gpu: str, provider: str = "vast"):
         """Triggers replacement renting, data restoration, and connection handover across Vast and RunPod."""
         print(f"\n[🚨 FAILOVER TRIGGERED] Instance {evicted_id} on {provider.upper()} has been evicted/stopped!")
         
-        if hasattr(self, 'total_failovers'):
-            self.total_failovers += 1
+        failover_start = time.time()
+        with self.failover_lock:
+            if hasattr(self, 'total_failovers'):
+                self.total_failovers += 1
             
         self.stop_backup_sync(evicted_id)
 
@@ -834,7 +911,7 @@ class GpuActionGuard:
             # Scenario 2: RunPod -> Vast.ai 긴급 우회 (RunPod 스팟 전량 품절 시)
             if self.failover_policy != "runpod-only" and self.vast_api_key:
                 print(f"[*] [Scenario 2: RunPod ➡️ Vast.ai] RunPod spot out of stock — falling back to Vast.ai for '{match_token}'...")
-                candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=None)
+                candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=None, min_cuda=DEFAULT_REPLACEMENT_MIN_CUDA)
                 if candidate_offers:
                     try:
                         result = self._race_rent_vast_candidates(candidate_offers)
@@ -880,13 +957,28 @@ class GpuActionGuard:
         if provider == "vast":
             # Scenario 3: Vast.ai -> Vast.ai (초극강 가성비 스팟 유지)
             candidate_offers = []
+            spec = self.launch_specs.get(evicted_id)
+            _, min_cuda = self._replacement_payload(spec)
             if self.failover_policy in ("same-cloud-first", "vast-only") and self.vast_api_key:
                 print(f"[*] [Scenario 3: Vast.ai ➡️ Vast.ai] Finding cheapest alternative matching '{match_token}' on Vast.ai...")
-                candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=evicted_host_id)
+                if spec and spec.get("template_hash_id"):
+                    print(f"[i] Replacement will use the same Vast.ai template as {evicted_id} ({spec['template_hash_id'][:8]}…).")
+                else:
+                    print(f"[i] Replacement image: {(spec or {}).get('image') or DEFAULT_REPLACEMENT_IMAGE}")
+                candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=evicted_host_id, min_cuda=min_cuda)
+                # match_token is the GPU family ("h100"), which also matches other form
+                # factors (H100 SXM vs PCIe vs NVL — different memory bandwidth). Prefer the
+                # exact model that was evicted; fall back to the family only if none is rentable.
+                exact = [o for o in candidate_offers
+                         if (o.get('gpu_name') or '').lower() == (evicted_gpu or '').lower()]
+                if exact:
+                    candidate_offers = exact
+                elif candidate_offers:
+                    print(f"[i] No '{evicted_gpu}' available right now — using the same GPU family ({match_token}).")
 
             if candidate_offers:
                 try:
-                    result = self._race_rent_vast_candidates(candidate_offers)
+                    result = self._race_rent_vast_candidates(candidate_offers, spec)
                     if result:
                         new_id, new_host, new_port, replacement_inst = result
                         vast_inst_key = f"vast_{new_id}"
@@ -895,14 +987,16 @@ class GpuActionGuard:
                         self.restore_backup(evicted_id, vast_inst_key, new_host, new_port)
                         self.start_backup_sync(vast_inst_key, new_host, new_port)
                         self.tracked_instances[vast_inst_key] = (new_host, new_port, replacement_inst.get('host_id'), replacement_inst.get('gpu_name', match_token), "vast")
-                        
+                        if spec:
+                            self.launch_specs[vast_inst_key] = spec  # a second eviction comes back the same way
+
                         raw_old_id = str(evicted_id).replace("vast_", "")
                         print(f"[*] Cleaning up. Destroying evicted primary instance {raw_old_id}...")
                         requests.delete(f"https://console.vast.ai/api/v0/instances/{raw_old_id}/", headers=self.headers, timeout=15)
                         
                         if self.resume_cmd:
                             self.execute_resume_command(new_host, new_port)
-                        print(f"[+] SUCCESS: Vast.ai ➡️ Vast.ai failover complete! Instance {vast_inst_key} is running.")
+                        print(f"[+] SUCCESS: Vast.ai ➡️ Vast.ai failover complete! Instance {vast_inst_key} is running (replaced {evicted_id} in {int(time.time() - failover_start)}s).")
                         return
                 except Exception as e:
                     print(f"[-] Vast racing rental error: {e}")
@@ -976,7 +1070,7 @@ class GpuActionGuard:
             self.runpod_last_check[runpod_id] = time.time()
 
             match_token = info["match_token"]
-            candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=None)
+            candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=None, min_cuda=DEFAULT_REPLACEMENT_MIN_CUDA)
             if not candidate_offers:
                 continue
 
@@ -1131,7 +1225,7 @@ class GpuActionGuard:
                     requests.post(
                         f"{CENTRAL_SERVER}/api/v1/update_status",
                         json=payload,
-                        headers={"User-Agent": "SpotWarp-Guard/3.4.2"},
+                        headers={"User-Agent": f"SpotWarp-Guard/{VERSION}"},
                         timeout=5
                     )
                 except Exception:
@@ -1178,6 +1272,7 @@ class GpuActionGuard:
                         host_id = inst.get('host_id')
                         gpu_name = inst.get('gpu_name', 'Unknown')
                         self.tracked_instances[inst_key] = (host, port, host_id, gpu_name, "vast")
+                        self._remember_launch_spec(inst_key, inst)
                         print(f"[Tracked] Vast.ai Active Instance: {inst_key} (Host {host_id}, GPU: {gpu_name})")
                         self.start_backup_sync(inst_key, host, port)
 
@@ -1219,17 +1314,23 @@ class GpuActionGuard:
                                 matching = next((i for i in current_vast if i['id'] == raw_id), None)
                                 if not matching or matching.get('actual_status') != 'running':
                                     gpu_name = matching.get('gpu_name', tracked_gpu) if matching else tracked_gpu
-                                    self.handle_failover(tracked_key, host_id, gpu_name, provider="vast")
-                                    self.tracked_instances.pop(tracked_key, None)
+                                    self._dispatch_failover(tracked_key, host_id, gpu_name, "vast")
 
                         # Check new Vast instances
                         for inst in current_vast:
                             raw_id = inst['id']
                             inst_key = f"vast_{raw_id}"
+                            # Replacement candidates are rented, raced and adopted (or destroyed) by
+                            # the failover thread itself. Picking one up here while its race is still
+                            # running would start a second backup on it and, once a losing candidate
+                            # is destroyed, mistake that for an eviction and fail over a throwaway.
+                            if inst.get('label') == 'spotwarp-failover-replacement':
+                                continue
                             if inst_key not in self.tracked_instances and inst.get('actual_status') == 'running':
                                 host, port = get_ssh_endpoint(inst)
                                 gpu_name = inst.get('gpu_name', 'Unknown')
                                 self.tracked_instances[inst_key] = (host, port, inst.get('host_id'), gpu_name, "vast")
+                                self._remember_launch_spec(inst_key, inst)
                                 print(f"\n[Tracked] Found new active Vast instance: {inst_key} (Host {inst.get('host_id')}, GPU: {gpu_name})")
                                 self.start_backup_sync(inst_key, host, port)
 
@@ -1291,7 +1392,7 @@ class GpuActionGuard:
             print("[SpotWarp Guard] Guard daemon stopped gracefully.")
 
 
-VERSION = "3.4.2"
+VERSION = "3.4.3"
 CONFIG_DIR = os.path.expanduser("~/.spotwarp")
 CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")

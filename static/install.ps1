@@ -14,7 +14,7 @@ Write-Host " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   " -ForegroundColo
 Write-Host "       |_|                                |_|      " -ForegroundColor Cyan
 Write-Host ""
 Write-Host "SpotWarp: Spot GPU Continuous Backup & Cross-Cloud Failover Daemon" -ForegroundColor White
-Write-Host "Version: v3.4.2" -ForegroundColor Green
+Write-Host "Version: v3.4.3" -ForegroundColor Green
 Write-Host ""
 
 $installDir = "$HOME\AppData\Local\Programs\SpotWarp"
@@ -50,7 +50,7 @@ if (-not $binaryInstalled) {
         Write-Host "[!] Python not found in PATH. Please install Python 3.8+ from python.org." -ForegroundColor Yellow
         Exit 1
     }
-    python -m pip install --upgrade --quiet "spotwarp>=3.4.2"
+    python -m pip install --upgrade --quiet "spotwarp>=3.4.3"
     Write-Host "[+] Successfully installed spotwarp package!" -ForegroundColor Green
 } else {
     # Add to User PATH if not present
@@ -69,7 +69,7 @@ $hasRunpod = (Test-Path $runpodKeyFile) -or [bool]$env:RUNPOD_API_KEY
 
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor White
-Write-Host "[+] SpotWarp v3.4.2 is READY!" -ForegroundColor Green
+Write-Host "[+] SpotWarp v3.4.3 is READY!" -ForegroundColor Green
 if ($hasVast) {
     Write-Host "    ? Auto-detected Vast.ai API Key" -ForegroundColor Green
 }

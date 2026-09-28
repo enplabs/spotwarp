@@ -9,7 +9,7 @@
   <img src="static/spotwarp_demo.gif" alt="SpotWarp 30s Terminal Demo" width="100%" />
 </div>
 
-The real cost of a Spot GPU eviction was never the few minutes of downtime — it's the hours of training progress that vanish with it. **SpotWarp** is a high-performance, standalone C-binary (Zero-Python required) and lightweight daemon that runs continuous automatic backups of your workspace in the background, so an eviction never costs you your work. Sub-minute cross-cloud failover (Vast.ai ⇄ RunPod) is what turns that protected workspace into a hands-off recovery, but the backup is the part that actually saves you.
+The real cost of a Spot GPU eviction was never the few minutes of downtime — it's the hours of training progress that vanish with it. **SpotWarp** is a high-performance, standalone C-binary (Zero-Python required) and lightweight daemon that runs continuous automatic backups of your workspace in the background, so an eviction never costs you your work. Automatic failover (Vast.ai ⇄ Vast.ai, and cross-cloud with RunPod) is what turns that protected workspace into a hands-off recovery, but the backup is the part that actually saves you.
 
 Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of on-demand — the eviction risk that normally makes that a gamble is exactly what SpotWarp removes.
 
@@ -17,10 +17,10 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 
 ## 🆚 Spot GPU Eviction: Standard vs. SpotWarp
 
-| Feature | Standard Spot Instance | With SpotWarp (v3.4.2) |
+| Feature | Standard Spot Instance | With SpotWarp (v3.4.3) |
 | :--- | :--- | :--- |
 | **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
-| **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement in under a minute. |
+| **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement — median 54s in our live tests. |
 | **If your cloud is out of stock** | Failover fails outright — nothing to migrate to. | **Any-to-Any Cross-Cloud Bridge**. Seamless cross-cloud failover across Vast.ai and RunPod in both directions (`Vast.ai ⇄ RunPod`). |
 | **Paying fallback-cloud rates forever** | N/A | **Bidirectional Auto-Failback**. Continuously checks your primary cloud and automatically repatriates the workload the moment lower-cost capacity returns. |
 | **Workload Continuation** | Restart training from epoch 0. | **Auto-Resume**. Script continues running via `nohup` over SSH, from where the backup left off. |
@@ -31,7 +31,7 @@ Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of 
 ## 💎 Core Commercial Features
 
 * 🛡️ **Continuous Automatic Backup — the real safety net**: Runs high-speed `rsync`/`scp` incremental backups of your workspace to your local machine in the background, the whole time your instance is running — not just triggered after an eviction is detected. This is the feature that actually prevents loss; everything else below just makes recovering from it fast and hands-off.
-* 🏁 **Parallel Candidate Racing**: On eviction, SpotWarp rents several replacement candidates concurrently instead of trying them one at a time — a single slow or dead host no longer adds minutes to your downtime. Typical failover: well under a minute.
+* 🏁 **Parallel Candidate Racing**: On eviction, SpotWarp rents several replacement candidates concurrently instead of trying them one at a time — a single slow or dead host no longer adds minutes to your downtime. Live test (Sept 2026, 11 real evictions in batches of 2-5 at once: RTX 3060/3090/4090, A6000, L40S, A100, H100): 11/11 recovered with a byte-identical workspace, median 54s, 10 of 11 within 2 minutes.
 * 🌐 **Cross-Cloud Fallback (Vast.ai ⇄ RunPod)**: If your primary cloud has zero matching candidates at the moment of eviction, SpotWarp automatically bridges to RunPod — spot pricing first, retrying on-demand if RunPod has no spot capacity for that GPU model — so your workload stays protected instead of failing outright.
 * ↩️ **Automatic Cost-Optimizing Failback**: A bridge-cloud replacement is never left running indefinitely at the higher rate. SpotWarp keeps checking your original cloud in the background and migrates the workload back the instant a cheaper matching candidate reappears — verified end-to-end on a single live instance: rented on Vast.ai, evicted, bridged to RunPod, then automatically migrated back to Vast.ai once capacity returned.
 * 💸 **CFO-Approved GPU Savings**: Safely exploit cheap Spot pricing on Vast.ai. SpotWarp gives you the reliability of a Dedicated On-Demand GPU for the price of a Spot instance.

@@ -1,0 +1,38 @@
+{
+  "name": "spotwarp-zero-eviction-guard",
+  "display_name": "SpotWarp AI Failover Guard (Salad Container Recipe)",
+  "description": "Enterprise-grade spot fault-tolerance for SaladCloud distributed GPU mesh. Automatically detects node disconnects and triggers instantaneous checkpoint failover.",
+  "image": "ghcr.io/enplabs/spotwarp:pytorch2.1",
+  "resources": {
+    "cpu": 4,
+    "memory": 16384,
+    "gpu_classes": [
+      "rtx-3080",
+      "rtx-3090",
+      "rtx-4080",
+      "rtx-4090"
+    ],
+    "storage": 50
+  },
+  "environment_variables": {
+    "LICENSE_KEY": "",
+    "SALAD_API_KEY": "",
+    "GPU_ACTION_SERVER_URL": "https://gpu-action.com"
+  },
+  "networking": {
+    "protocol": "http",
+    "port": 8888,
+    "auth": true
+  },
+  "readiness_probe": {
+    "http": {
+      "path": "/",
+      "port": 8888
+    },
+    "initial_delay_seconds": 30,
+    "period_seconds": 10,
+    "timeout_seconds": 5,
+    "failure_threshold": 3
+  },
+  "restart_policy": "always"
+}

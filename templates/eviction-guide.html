@@ -94,7 +94,7 @@
 
     <header>
         <div class="nav-content">
-            <a href="/" class="logo"><i class="fa-solid fa-bolt-lightning"></i> GPU<span>-ACTION</span></a>
+            <a href="/" class="logo"><i class="fa-solid fa-bolt-lightning"></i> Spot<span>Warp</span></a>
             <a href="/" class="back-home"><i class="fa-solid fa-house"></i> Return to Home</a>
         </div>
     </header>
@@ -128,7 +128,7 @@
         <p>We ran into this exact problem enough times that we built <a href="/" style="color:var(--accent-cyan);">SpotWarp</a> to solve it directly, rather than switching providers and hoping. It's a local daemon (100% local execution, your cloud API keys never leave your machine) that:</p>
         <ul>
             <li><strong>Backs up your workspace continuously in the background</strong> — not on a schedule, the whole time your instance runs — so there's no gap between "last checkpoint" and "eviction" to lose work in.</li>
-            <li><strong>Races multiple replacement candidates in parallel</strong> the moment an eviction is detected, picking the cheapest one that's actually SSH-reachable, instead of trying hosts one at a time. Typical failover: well under a minute.</li>
+            <li><strong>Races multiple replacement candidates in parallel</strong> the moment an eviction is detected, picking the cheapest one that's actually SSH-reachable, instead of trying hosts one at a time. Typical failover: under a minute.</li>
             <li><strong>Bridges to RunPod automatically if Vast.ai has no matching capacity</strong> at that moment (spot pricing first, on-demand as fallback), then migrates back once your original cloud is cheaper again — so a bad-inventory moment on one platform doesn't become downtime.</li>
             <li><strong>Resumes your training script automatically</strong> on the new instance from the restored checkpoint, rather than you re-launching it by hand.</li>
         </ul>

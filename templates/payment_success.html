@@ -264,12 +264,15 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; font-size: 13px;">
                 <div>
                     <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Plan</span>
-                    <strong style="color: #FFFFFF;">Developer Pass ($49/mo)</strong>
+                    <strong style="color: #FFFFFF;">{{ plan_name if plan_name else 'SpotWarp Annual Pass' }}</strong>
                 </div>
                 <div>
                     <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Billing</span>
-                    <strong style="color: var(--primary);">$49.00 USD / month</strong>
+                    <strong style="color: var(--primary);">{{ billing_str if billing_str else '$490.00 USD / year (2 Months Free)' }}</strong>
                 </div>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; font-size: 12px; color: #34d399;">
+                <i class="fa-solid fa-calendar-check" style="margin-right: 6px;"></i> Coverage Period: <b>{{ expire_str if expire_str else '1 Year Full Protection (365 Days)' }}</b>
             </div>
             <div class="license-header" style="margin-top: 8px;">
                 <span>Your Production License Key</span>
@@ -287,22 +290,20 @@
             <div class="code-block">
                 <span class="code-comment"># 1. Install SpotWarp CLI</span><br>
                 <span class="code-cmd">pip install spotwarp</span><br><br>
-                <span class="code-comment"># 2. Authenticate with your key</span><br>
-                <span class="code-cmd">spotwarp auth {{ license_key if license_key else '<YOUR_KEY>' }}</span><br><br>
-                <span class="code-comment"># 3. Launch with zero-eviction failover</span><br>
-                <span class="code-cmd">spotwarp run --gpu A100:8 --provider vastai --failover runpod train.py</span>
+                <span class="code-comment"># 2. Start the guard daemon with your key (resumes this command on failover)</span><br>
+                <span class="code-cmd">spotwarp start --license-key {{ license_key if license_key else '<YOUR_KEY>' }} -d --resume-cmd "python train.py"</span>
             </div>
         </div>
 
-        <a href="/dashboard" class="btn-primary">
-            <i class="fa-solid fa-gauge-high"></i> Open Live GPU Dashboard &rarr;
+        <a href="/quickstart" class="btn-primary">
+            <i class="fa-solid fa-terminal"></i> Open Setup Guide &amp; CLI Docs &rarr;
         </a>
-        <a href="/quickstart" class="btn-secondary">
-            View Complete CLI &amp; Python SDK Docs
+        <a href="/" class="btn-secondary">
+            <i class="fa-solid fa-house"></i> Return to Homepage
         </a>
 
         <div class="footer-note">
-            Receipt delivered via Stripe. Need priority engineering support? Email <a href="mailto:support@gpu-action.com">support@gpu-action.com</a>
+            Receipt delivered via Stripe. Need priority engineering support? Email <a href="mailto:info@gpu-action.com">info@gpu-action.com</a>
         </div>
     </div>
 </div>

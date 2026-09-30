@@ -360,7 +360,7 @@
             background: rgba(16, 185, 129, 0.05);
         }
 
-        /* Simulated Terminal Console */
+        /* Guard Status console (renders reported values, not simulated output) */
         .terminal-box {
             background: #060813;
             border: 1px solid #111827;
@@ -518,7 +518,7 @@
         <div class="container nav-content">
             <a href="/" class="logo">
                 <i class="fa-solid fa-bolt-lightning"></i>
-                GPU<span>-ACTION</span>
+                Spot<span>Warp</span>
             </a>
             <div class="user-menu">
                 <span class="license-badge"><i class="fa-solid fa-crown"></i> {{ license.license_key[:12] }}...</span>
@@ -602,24 +602,26 @@
                     
                     <div class="node-list">
                         {% if license.active_instances_count > 0 %}
-                        <!-- Render active node information dynamically -->
+                        <!-- Reported values only. Instance names, GPU models, prices and
+                             SSH strings never leave the customer's machine. -->
                         <div class="node-item">
                             <div class="node-meta">
                                 <div class="node-avatar"><i class="fa-solid fa-server"></i></div>
                                 <div>
-                                    <div class="node-name">SpotWarp-RTX-3090-Node-1</div>
+                                    <div class="node-name">{{ license.active_instances_count }} instance{{ 's' if license.active_instances_count > 1 else '' }} under guard</div>
                                     <div class="node-sub">
-                                        <span><i class="fa-solid fa-cloud-arrow-down"></i> Vast.ai Spot</span>
+                                        <span><i class="fa-solid fa-clock-rotate-left"></i> Last reported {{ license.last_reported_at or 'never' }}</span>
+                                        {% if license.active_machine_ip %}
                                         <span>•</span>
-                                        <span><i class="fa-solid fa-circle-check" style="color: var(--accent-emerald);"></i> 100% Guarded</span>
-                                        <span>•</span>
-                                        <span style="color: var(--accent-orange); font-weight: 600;">$0.22/hr</span>
+                                        <span><i class="fa-solid fa-desktop"></i> from {{ license.active_machine_ip }}</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
                             <div class="node-actions">
-                                <div class="ssh-pill" onclick="copySSH('ssh -p 12345 root@ssh5.vast.ai')">
-                                    <i class="fa-solid fa-terminal"></i> ssh -p 12345 root@ssh5.vast.ai
+                                <div style="font-size: 0.78rem; color: var(--text-muted); text-align: right; line-height: 1.5;">
+                                    Instance details stay local.<br>
+                                    Run <code>spotwarp status</code> on your machine.
                                 </div>
                             </div>
                         </div>
@@ -633,41 +635,47 @@
                     </div>
                 </div>
                 
-                <!-- Autopilot Console Terminal Emulator (Visual Effect) -->
+                <!-- Guard status: reported values only. -->
                 <div class="glass-card">
                     <div class="card-header">
                         <div class="card-title">
-                            <i class="fa-solid fa-terminal"></i> Autopilot Agent System Logs
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--accent-emerald); font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            <span style="display:inline-block; width:6px; height:6px; background:var(--accent-emerald); border-radius:50%; box-shadow:0 0 8px var(--accent-emerald);"></span> Connected Live
-                        </div>
-                    </div>
-                    
-                    <div class="terminal-box" id="terminal-logs">
-                        <!-- Simulated lines generated via JS -->
-                        <div class="term-line">
-                            <span class="term-ts">[01:00:02]</span>
-                            <span class="term-tag tag-info">SYSTEM</span>
-                            <span class="term-msg">SpotWarp Failover Guard Agent initialization...</span>
-                        </div>
-                        <div class="term-line">
-                            <span class="term-ts">[01:00:03]</span>
-                            <span class="term-tag tag-info">SYSTEM</span>
-                            <span class="term-msg">License Verification successful. Dev Pass active.</span>
+                            <i class="fa-solid fa-satellite-dish"></i> Guard Status
                         </div>
                         {% if license.active_instances_count > 0 %}
-                        <div class="term-line">
-                            <span class="term-ts">[01:00:05]</span>
-                            <span class="term-tag tag-success">SYNC</span>
-                            <span class="term-msg">Background high-speed 'rsync' delta sync active (99.8% matched).</span>
+                        <div style="font-size: 0.75rem; color: var(--accent-emerald); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            <span style="display:inline-block; width:6px; height:6px; background:var(--accent-emerald); border-radius:50%; box-shadow:0 0 8px var(--accent-emerald);"></span> Reporting
                         </div>
-                        <div class="term-line">
-                            <span class="term-ts">[01:00:35]</span>
-                            <span class="term-tag tag-success">HEARTBEAT</span>
-                            <span class="term-msg">Pinging central server (/api/v1/update_status) - Status code 200 OK.</span>
+                        {% else %}
+                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            <span style="display:inline-block; width:6px; height:6px; background:#9ca3af; border-radius:50%;"></span> No report yet
                         </div>
                         {% endif %}
+                    </div>
+
+                    <div class="terminal-box" id="terminal-logs">
+                        <div class="term-line">
+                            <span class="term-tag tag-info">LICENSE</span>
+                            <span class="term-msg">{{ license.status or 'Unknown' }}{% if license.expire_date %} &middot; valid until {{ license.expire_date }}{% endif %}</span>
+                        </div>
+                        <div class="term-line">
+                            <span class="term-tag {% if license.last_reported_at %}tag-success{% else %}tag-warn{% endif %}">HEARTBEAT</span>
+                            <span class="term-msg">{% if license.last_reported_at %}Last report received {{ license.last_reported_at }}{% else %}No report received from your machine yet{% endif %}</span>
+                        </div>
+                        <div class="term-line">
+                            <span class="term-tag tag-info">GUARDING</span>
+                            <span class="term-msg">{{ license.active_instances_count or 0 }} instance(s) reported under guard</span>
+                        </div>
+                        <div class="term-line">
+                            <span class="term-tag tag-info">FAILOVERS</span>
+                            <span class="term-msg">{{ license.total_failovers or 0 }} recovery event(s) recorded on this license</span>
+                        </div>
+                        <div class="term-line" style="opacity: 0.75; margin-top: 10px;">
+                            <span class="term-msg">
+                                This panel shows only what your daemon has reported to us. The live log
+                                itself runs on your own machine &mdash; view it with <code>spotwarp status</code>,
+                                or run the guard in the foreground with <code>spotwarp start</code>.
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -712,7 +720,7 @@
                     <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;">
                         Your trial will expire soon. Click below to simulate Stripe checkout and upgrade your license to a permanent Developer Pass.
                     </p>
-                    <button id="btn-upgrade-sandbox" onclick="simulateStripeCheckout('Developer Pass ($49/mo)')" class="btn-action-block btn-action-primary" style="width: 100%; font-size: 0.78rem; padding: 10px;">
+                    <button id="btn-upgrade-license" onclick="startRealUpgradeCheckout('Developer Pass ($49/mo)')" class="btn-action-block btn-action-primary" style="width: 100%; font-size: 0.78rem; padding: 10px;">
                         <i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)
                     </button>
                 </div>
@@ -800,8 +808,8 @@
             alert("Command copied to clipboard: " + text);
         }
 
-        async function simulateStripeCheckout(planType) {
-            const btn = document.getElementById("btn-upgrade-sandbox");
+        async function startRealUpgradeCheckout(planType) {
+            const btn = document.getElementById("btn-upgrade-license");
             if (btn) {
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting to Stripe...';
@@ -821,22 +829,6 @@
                 if (data.success && data.checkout_url) {
                     // Redirect to real Stripe Checkout page
                     window.location.href = data.checkout_url;
-                } else if (!data.success && data.message && data.message.includes("not configured")) {
-                    // Stripe not yet set up on server — fall back to simulate for internal testing
-                    if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing (Sandbox)...';
-                    const r2 = await fetch('/api/v1/simulate_upgrade', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ license_key: "{{ license.license_key }}", plan_type: planType })
-                    });
-                    const d2 = await r2.json();
-                    if (d2.success) {
-                        alert("Stripe Sandbox Payment Successful!\n\nYour license has been upgraded to Developer Pass ($49/month).");
-                        window.location.reload();
-                    } else {
-                        alert("Upgrade failed: " + d2.message);
-                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
-                    }
                 } else {
                     alert("Could not initiate checkout: " + (data.message || "Unknown error"));
                     if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Buy Developer Pass ($49/mo)'; }
@@ -848,49 +840,8 @@
         }
 
 
-        // Live Simulated Log Stream Animation
-        const logsBox = document.getElementById("terminal-logs");
-        const logTemplates = [
-            { tag: "info", tagText: "SYSTEM", msg: "Verifying active cloud resources on Vast.ai..." },
-            { tag: "success", tagText: "SYNC", msg: "Workspace background delta sync complete. 0 bytes transferred (rsync delta)." },
-            { tag: "info", tagText: "SYSTEM", msg: "Guarding active instance 1839281. Eviction score: 0.02 (Very Stable)." },
-            { tag: "success", tagText: "HEARTBEAT", msg: "Status push success. Response time: 48ms." },
-            { tag: "warn", tagText: "WARN", msg: "Minor latency spike detected on Vast SSH port 2222. Retrying..." },
-            { tag: "success", tagText: "SYNC", msg: "Backup synchronization successfully run. Saved 45MB of checkpoints." }
-        ];
-
-        function addLogLine() {
-            if (!logsBox) return;
-            const now = new Date();
-            const ts = "[" + now.toTimeString().split(' ')[0] + "]";
-            const template = logTemplates[Math.floor(Math.random() * logTemplates.length)];
-            
-            const line = document.createElement("div");
-            line.className = "term-line";
-            
-            let tagClass = "tag-info";
-            if (template.tag === "success") tagClass = "tag-success";
-            if (template.tag === "warn") tagClass = "tag-warn";
-            
-            line.innerHTML = `
-                <span class="term-ts">${ts}</span>
-                <span class="term-tag ${tagClass}">${template.tagText}</span>
-                <span class="term-msg">${template.msg}</span>
-            `;
-            
-            logsBox.appendChild(line);
-            
-            // Keep logs to max 25 lines
-            if (logsBox.children.length > 25) {
-                logsBox.removeChild(logsBox.firstChild);
-            }
-            
-            // Scroll to bottom
-            logsBox.scrollTop = logsBox.scrollHeight;
-        }
-
-        // Add a line every 8-12 seconds randomly
-        setInterval(addLogLine, 9000);
+        // Guard Status is rendered server-side from reported values only.
+        // Do not add client-side log animation here.
     </script>
 </body>
 </html>

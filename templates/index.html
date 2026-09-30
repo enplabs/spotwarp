@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SpotWarp: Never lose a training run to a Spot GPU eviction. Continuous automatic backup + sub-minute cross-cloud failover (Vast.ai + RunPod). 100% Local Execution, Zero-Key Storage.">
+    <meta name="description" content="SpotWarp: Never lose a training run to a Spot GPU eviction. Continuous automatic backup + cross-cloud failover, typically under a minute (Vast.ai + RunPod). 100% Local Execution, Zero-Key Storage.">
     <meta name="keywords" content="GPU cost optimization, Spot instance failover, AI GPU proxy, Vast.ai failover guard, RunPod backup router, cheap GPU cloud, local execution, automatic GPU backup">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://gpu-action.com/">
@@ -12,7 +12,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://gpu-action.com/">
     <meta property="og:title" content="SpotWarp | Never Lose a Training Run to a Spot GPU Eviction">
-    <meta property="og:description" content="Continuous automatic backup + sub-minute cross-cloud failover for Vast.ai & RunPod Spot GPUs. 100% local execution, zero-key storage.">
+    <meta property="og:description" content="Continuous automatic backup + cross-cloud failover, typically under a minute, for Vast.ai & RunPod Spot GPUs. 100% local execution, zero-key storage.">
     <meta property="og:image" content="https://gpu-action.com/static/brand_assets/og_image.png">
 
     <title>SpotWarp | Never Lose a Training Run to a Spot GPU Eviction</title>
@@ -546,6 +546,30 @@
             gap: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
+
+        /* This page shipped with no media queries at all. On a 375px phone the
+           nav row alone forced the document to 597px, so every section below it
+           laid out against that width and the whole page scrolled sideways --
+           the Pricing button sat off-screen entirely. Letting the nav wrap fixes
+           the document width; the comparison table then scrolls inside its own
+           wrapper (which already had overflow-x) instead of dragging the page. */
+        @media (max-width: 768px) {
+            .nav-content { flex-wrap: wrap; gap: 10px; }
+
+            .nav-links {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 14px;
+                row-gap: 10px;
+            }
+
+            .nav-links a { font-size: 0.85rem; }
+            .nav-links a.btn-primary { padding: 8px 16px; }
+
+            .comp-table { font-size: 0.85rem; }
+            .comp-table th, .comp-table td { padding: 14px 12px; }
+        }
 </style>
 </head>
 <body>
@@ -574,7 +598,7 @@
                 <i class="fa-solid fa-shield-halved"></i> 100% Local Execution • Zero-Key Storage • PyPI Verified
             </div>
             <h1>Never Lose a Training Run to<br><span class="highlight">a Spot GPU Eviction</span></h1>
-            <p>The real cost of an eviction was never the downtime — it's the hours of progress that vanish with it. SpotWarp runs continuous automatic backups of your workspace in the background, then delivers sub-minute cross-cloud failover (Vast.ai ⇄ RunPod) so recovery is hands-off too. Cut GPU costs by up to 70% by safely using Spot pricing instead of on-demand.</p>
+            <p>The real cost of an eviction was never the downtime — it's the hours of progress that vanish with it. SpotWarp runs continuous automatic backups of your workspace in the background, then delivers cross-cloud failover, typically under a minute (Vast.ai ⇄ RunPod), so recovery is hands-off too. Cut GPU costs by up to 70% by safely using Spot pricing instead of on-demand.</p>
 
             <!-- Code snippet with OS Tabs -->
             <div class="code-box">
@@ -804,7 +828,7 @@
                 </p>
                 <div style="margin-top: 16px;">
                     <a href="#pricing" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 0.95rem; font-weight: 700; text-decoration: none; border-radius: 8px;">
-                        <i class="fa-solid fa-bolt"></i> Get SpotWarp Guard ($49/mo)
+                        <i class="fa-solid fa-bolt"></i> Get SpotWarp Pass ($49/mo)
                     </a>
                 </div>
             </div>
@@ -821,7 +845,7 @@
             </div>
             <div class="pillar-card">
                 <div class="pillar-icon"><i class="fa-solid fa-shield-virus"></i></div>
-                <h3>Sub-Minute Cross-Cloud Failover</h3>
+                <h3>Cross-Cloud Failover, Typically Under a Minute</h3>
                 <p>Detect eviction within seconds and race multiple replacement candidates concurrently on Vast.ai. If your cloud is out of stock, SpotWarp bridges to RunPod automatically, then migrates you back the moment cheaper capacity returns.</p>
             </div>
             <div class="pillar-card">
@@ -862,21 +886,21 @@
     </section>
 
 
-    <!-- Social Proof & Testimonials Section -->
+    <!-- Engineering Test Record Section -->
     <section id="social-proof" class="container" style="margin: 80px auto 30px; padding: 0 20px;">
         <!-- Metrics Ribbon -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 16px; padding: 32px 24px; margin-bottom: 64px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);">
             <div style="text-align: center;">
-                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-orange); line-height: 1.1;">120,000+</div>
-                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Spot GPU Hours Protected</div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-orange); line-height: 1.1;">8</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">GPU Tiers Failover-Tested</div>
             </div>
             <div style="text-align: center; border-left: 1px solid var(--card-border);">
-                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-green); line-height: 1.1;">&lt; 45s</div>
-                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Parallel Failover Latency</div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-green); line-height: 1.1;">&lt; 60s</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Typical Recovery After Eviction</div>
             </div>
             <div style="text-align: center; border-left: 1px solid var(--card-border);">
-                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-cyan); line-height: 1.1;">99.8%</div>
-                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Zero-Eviction Loss Rate</div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-cyan); line-height: 1.1;">⇄</div>
+                <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600; margin-top: 8px;">Cross-Cloud Verified Both Ways</div>
             </div>
             <div style="text-align: center; border-left: 1px solid var(--card-border);">
                 <div style="font-size: 2.5rem; font-weight: 800; color: #a855f7; line-height: 1.1;">100%</div>
@@ -887,72 +911,100 @@
         <!-- Section Header -->
         <div style="text-align: center; margin-bottom: 40px;">
             <div class="badge" style="background: rgba(249, 115, 22, 0.12); border-color: rgba(249, 115, 22, 0.3); color: var(--accent-orange);">
-                <i class="fa-solid fa-users"></i> Developer & Team Testimonials
+                <i class="fa-solid fa-flask-vial"></i> Engineering Test Record
             </div>
-            <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px; letter-spacing: -0.5px;">Trusted by AI Engineers Running at Scale</h2>
-            <p style="color: var(--text-muted); max-width: 640px; margin: 8px auto 0; font-size: 1.05rem;">
-                See how AI founders, generative video creators, and researchers eliminate spot eviction anxiety.
+            <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px; letter-spacing: -0.5px;">What We've Actually Tested</h2>
+            <p style="color: var(--text-muted); max-width: 700px; margin: 8px auto 0; font-size: 1.05rem;">
+                SpotWarp is new, so instead of quoting customers we don't have yet, here is the real test record — what we rented, what we broke on purpose, and what recovered. Every run below used real instances and real money on Vast.ai and RunPod.
             </p>
         </div>
 
-        <!-- Testimonials Cards Grid -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-            <!-- Card 1 -->
-            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 4px; color: #fbbf24; margin-bottom: 16px; font-size: 0.9rem;">
-                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
-                    </div>
-                    <p style="color: #e2e8f0; font-size: 0.96rem; line-height: 1.7; font-style: italic; margin-bottom: 20px;">
-                        "SpotWarp saved our 70B Llama-3 fine-tuning run when Vast evicted our 8x A100 cluster at 3 AM. It migrated checkpoints and resumed on RunPod in 38 seconds. Worth 10x the subscription cost."
-                    </p>
+        <!-- Test log entries -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 32px;">
+
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px 24px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <span style="font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-muted);">2026-08-06 &amp; 08-08</span>
+                    <span style="background: rgba(16, 185, 129, 0.12); color: var(--accent-green); font-size: 0.7rem; font-weight: 800; padding: 3px 9px; border-radius: 6px;">8 / 8 PASSED</span>
                 </div>
-                <div>
-                    <div style="display: inline-block; background: rgba(249, 115, 22, 0.12); color: var(--accent-orange); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; margin-bottom: 12px;">
-                        ⚡ 8x A100 Cluster Protected
-                    </div>
-                    <div style="font-weight: 700; color: #fff; font-size: 1rem;">Marcus Vance</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem;">Founder & ML Lead, NeuroFlow AI</div>
-                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Eviction &amp; recovery, eight GPU tiers</h4>
+                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; margin: 0;">
+                    Rented a real instance, started the real daemon, then destroyed the instance to force a genuine eviction. Recovery confirmed end to end on <b style="color: #cbd5e1;">A100, H100, RTX 4090, A6000, L40S, V100, H200 and B200</b>. Total real spend for the eight-tier day: under $1.
+                </p>
             </div>
 
-            <!-- Card 2 -->
-            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 4px; color: #fbbf24; margin-bottom: 16px; font-size: 0.9rem;">
-                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
-                    </div>
-                    <p style="color: #e2e8f0; font-size: 0.96rem; line-height: 1.7; font-style: italic; margin-bottom: 20px;">
-                        "We batch-render 40,000+ generative video frames daily on cheap RTX 4090 spot nodes. Before SpotWarp, unexpected evictions destroyed hours of compute. Now the bridge failover is 100% transparent."
-                    </p>
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px 24px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <span style="font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-muted);">Real rentals, both clouds</span>
+                    <span style="background: rgba(6, 182, 212, 0.12); color: var(--accent-cyan); font-size: 0.7rem; font-weight: 800; padding: 3px 9px; border-radius: 6px;">ROUND TRIP</span>
                 </div>
-                <div>
-                    <div style="display: inline-block; background: rgba(16, 185, 129, 0.12); color: var(--accent-green); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; margin-bottom: 12px;">
-                        🎬 40,000+ Frames Preserved
-                    </div>
-                    <div style="font-weight: 700; color: #fff; font-size: 1rem;">Elena Rostova</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem;">AI Video Director & ComfyUI Specialist</div>
-                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Cross-cloud bridge, verified in both directions</h4>
+                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; margin: 0;">
+                    Not just Vast.ai → RunPod. We also verified the return leg and a full <b style="color: #cbd5e1;">RunPod → Vast.ai → RunPod</b> round trip on live rentals, so the bridge cloud is genuinely temporary rather than a one-way trip to a more expensive home.
+                </p>
             </div>
 
-            <!-- Card 3 -->
-            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 4px; color: #fbbf24; margin-bottom: 16px; font-size: 0.9rem;">
-                        <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
-                    </div>
-                    <p style="color: #e2e8f0; font-size: 0.96rem; line-height: 1.7; font-style: italic; margin-bottom: 20px;">
-                        "Zero cloud key storage is the killer feature. As an academic research lab, we cannot upload SSH or Vast API keys to 3rd-party servers. SpotWarp runs locally with zero permissions leak."
-                    </p>
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px 24px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <span style="font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-muted);">2026-08-12</span>
+                    <span style="background: rgba(16, 185, 129, 0.12); color: var(--accent-green); font-size: 0.7rem; font-weight: 800; padding: 3px 9px; border-radius: 6px;">BYTE-FOR-BYTE</span>
                 </div>
-                <div>
-                    <div style="display: inline-block; background: rgba(6, 182, 212, 0.12); color: var(--accent-cyan); font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 6px; margin-bottom: 12px;">
-                        🔒 Zero-Key Leakage Verified
-                    </div>
-                    <div style="font-weight: 700; color: #fff; font-size: 1rem;">Dr. Aris Thorne</div>
-                    <div style="color: var(--text-muted); font-size: 0.85rem;">Computational Neuroscience Lab</div>
-                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Backup integrity on a live pod</h4>
+                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; margin: 0;">
+                    Wrote a checkpoint, a training log and a 5&nbsp;MB weights file into <code style="color: #cbd5e1;">/workspace</code> on a real RunPod pod. All three arrived on the local machine inside a single sync cycle with <b style="color: #cbd5e1;">matching contents</b>, not just matching filenames.
+                </p>
             </div>
+
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px 24px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <span style="font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-muted);">Architecture change</span>
+                    <span style="background: rgba(249, 115, 22, 0.12); color: var(--accent-orange); font-size: 0.7rem; font-weight: 800; padding: 3px 9px; border-radius: 6px;">20 MIN → &lt; 60 S</span>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Why recovery got fast</h4>
+                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; margin: 0;">
+                    Trying replacement hosts one at a time meant one dead host could cost 10–20 minutes. SpotWarp now races <b style="color: #cbd5e1;">four candidates concurrently</b> and holds a 15-second grace window after the first responds, so the <b style="color: #cbd5e1;">cheapest ready host wins</b> — not merely the fastest to answer.
+                </p>
+            </div>
+
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px 24px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <span style="font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-muted);">Found by testing</span>
+                    <span style="background: rgba(168, 85, 247, 0.12); color: #a855f7; font-size: 0.7rem; font-weight: 800; padding: 3px 9px; border-radius: 6px;">FIXED &amp; SHIPPED</span>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px;">A bug our own testing caught</h4>
+                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; margin: 0;">
+                    A live run landed on a Vast host that had failed the marketplace's own re-verification. It never connected, and quietly ran up a <b style="color: #cbd5e1;">$4.90 bandwidth charge</b> pulling a Docker image. SpotWarp now skips deverified hosts entirely. We mention it because this is the kind of thing you only find by actually renting machines.
+                </p>
+            </div>
+
+            <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 26px 24px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <span style="font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-muted);">Check it yourself</span>
+                    <span style="background: rgba(16, 185, 129, 0.12); color: var(--accent-green); font-size: 0.7rem; font-weight: 800; padding: 3px 9px; border-radius: 6px;">REPRODUCIBLE</span>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 10px;">You don't have to take our word</h4>
+                <p style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; margin: 0;">
+                    The client daemon is open source, the package is public on
+                    <a href="https://pypi.org/project/spotwarp/" target="_blank" style="color: var(--accent-cyan);">PyPI</a>, and every release binary ships with a
+                    <a href="https://github.com/enplabs/spotwarp/releases/latest" target="_blank" style="color: var(--accent-cyan);">SHA256 checksum</a>.
+                    Read the failover code before you run it — that is the point of shipping it open.
+                </p>
+            </div>
+        </div>
+
+        <!-- Honest limitations -->
+        <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--card-border); border-left: 3px solid var(--accent-orange); border-radius: 12px; padding: 26px 28px;">
+            <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 12px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-orange); margin-right: 8px;"></i>And what we haven't done yet
+            </h4>
+            <ul style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.9; margin: 0; padding-left: 20px;">
+                <li>Racing four candidates briefly multiplies your own cloud spend during the race window — a few cents on cheap tiers, roughly $0.30–$0.70 on H200 or B200. That is billed by your provider, not by us.</li>
+                <li>There is no real-time alerting yet. If a failover exhausts all four candidates, it is logged locally and nobody is paged.</li>
+                <li>The Windows binary is not code-signed, so SmartScreen may warn on first run. Verify the checksum if that concerns you.</li>
+            </ul>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin: 14px 0 0; font-style: italic;">
+                We would rather you read this before subscribing than discover it afterwards. The <a href="/refund" style="color: var(--accent-cyan);">14-day money-back guarantee</a> covers you either way.
+            </p>
         </div>
     </section>
 
@@ -961,6 +1013,7 @@
         <div class="badge"><i class="fa-solid fa-tag"></i> Transparent Software Pricing</div>
         <h2 style="font-size: 2.4rem; font-weight: 800; margin-top: 10px;">One Price, Per Machine</h2>
         <p style="color: var(--text-muted); margin-top: 8px;">No tiers, no per-GPU counting. One license protects everything running on that machine. Pay Vast.ai directly at wholesale spot cost — this is just the Guard subscription.</p>
+        <p style="color: var(--text-muted); margin-top: 12px; font-size: 0.95rem;"><i class="fa-solid fa-rotate-left" style="color: var(--accent-green); margin-right: 6px;"></i> Backed by a <a href="/refund" style="color: var(--accent-cyan); font-weight: 600;">14-day money-back guarantee</a> on both plans. Cancel anytime.</p>
 
         
         <!-- Promo / Creator Code Box -->
@@ -1000,7 +1053,7 @@
                     <div class="price" id="monthlyPriceDisplay" style="margin: 16px 0 16px; font-size: 2.8rem; font-weight: 800; color: #fff;">{% if ref %}<s style="color: #64748b; font-size: 1.8rem; margin-right: 8px;">$49</s>$24.50{% else %}$49{% endif %} <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ month</span></div>
                     <ul class="price-features" style="list-style: none; padding: 0; margin: 0 0 28px; line-height: 2; font-size: 0.95rem;">
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Continuous Automatic Workspace Backup</li>
-                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Parallel Candidate Racing (sub-minute)</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Parallel Candidate Racing (typically under a minute)</li>
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Cross-Cloud Bridge (Vast.ai ⇄ RunPod)</li>
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Real SSH-Verified Recovery</li>
                         <li><i class="fa-solid fa-check" style="color: var(--accent-green); margin-right: 8px;"></i> Zero-Key Leakage Security</li>
@@ -1018,8 +1071,8 @@
                 <div>
                     <h4 style="font-size: 1.35rem; font-weight: 800; color: #10b981;">SpotWarp Annual Pass</h4>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Save 17% ($98/yr) with annual billing</p>
-                    <div class="price" style="margin: 20px 0 6px; font-size: 2.8rem; font-weight: 800; color: #fff;">$490 <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ year</span></div>
-                    <div style="font-size: 0.85rem; color: #10b981; font-weight: 700; margin-bottom: 16px;">⚡ Equivalent to $40.83 / month</div>
+                    <div class="price" id="annualPriceDisplay" style="margin: 20px 0 6px; font-size: 2.8rem; font-weight: 800; color: #fff;">$490 <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ year</span></div>
+                    <div id="annualPriceNote" style="font-size: 0.85rem; color: #10b981; font-weight: 700; margin-bottom: 16px;">⚡ Equivalent to $40.83 / month</div>
                     <ul class="price-features" style="list-style: none; padding: 0; margin: 0 0 28px; line-height: 2; font-size: 0.95rem;">
                         <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> <b>Everything in Monthly Pass included</b></li>
                         <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> <b>2 Months Free ($98 instant savings)</b></li>
@@ -1029,7 +1082,7 @@
                         <li><i class="fa-solid fa-check" style="color: #10b981; margin-right: 8px;"></i> Unlimited Concurrent Spot GPUs</li>
                     </ul>
                 </div>
-                <button class="btn-primary" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff !important; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);" onclick="subscribeNow('SpotWarp Annual Pass ($490/yr)', this)">
+                <button class="btn-primary" id="annualSubscribeBtn" style="width: 100%; justify-content: center; font-size: 1.05rem; font-weight: 800; padding: 14px 20px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff !important; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);" onclick="subscribeNow('SpotWarp Annual Pass ($490/yr)', this)">
                     <i class="fa-solid fa-bolt"></i> Subscribe Annual — $490 / yr
                 </button>
             </div>
@@ -1054,7 +1107,7 @@
                     <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
                 </button>
                 <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
-                    One license protects <b>unlimited concurrent GPU instances</b> running on that machine. Whether you are training models across 2, 8, or 32 GPUs on Vast.ai or RunPod simultaneously, a single SpotWarp Pass ($49/mo) provides continuous background delta-sync and sub-minute failover for all of them.
+                    One license protects <b>unlimited concurrent GPU instances</b> running on that machine. Whether you are training models across 2, 8, or 32 GPUs on Vast.ai or RunPod simultaneously, a single SpotWarp Pass ($49/mo) provides continuous background delta-sync and failover, typically under a minute, for all of them.
                 </div>
             </div>
 
@@ -1076,7 +1129,7 @@
                     <i class="fa-solid fa-chevron-down faq-arrow" style="transition: transform 0.3s; color: var(--text-muted);"></i>
                 </button>
                 <div class="faq-answer" style="display: none; padding: 0 24px 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.05);">
-                    <b>Yes, absolutely.</b> There are no contracts or commitments. You can cancel your subscription at any time with a single click from your billing portal. Your SpotWarp license will remain fully active until the end of your paid billing period.
+                    <b>Yes, absolutely.</b> There are no contracts or commitments. You can cancel your subscription at any time with a single click from your billing portal. Your SpotWarp license will remain fully active until the end of your paid billing period. New subscribers are also covered by our <a href="/refund" style="color: var(--accent-cyan);">14-day money-back guarantee</a> — if SpotWarp isn't right for you, email us within 14 days of your first charge for a full refund.
                 </div>
             </div>
 
@@ -1100,6 +1153,8 @@
             <span style="color: #334155;">|</span>
             <a href="/privacy" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Privacy Policy</a>
             <span style="color: #334155;">|</span>
+            <a href="/refund" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Refund Policy</a>
+            <span style="color: #334155;">|</span>
             <a href="/docs" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Documentation</a>
             <span style="color: #334155;">|</span>
             <a href="/partners" style="color: #94a3b8; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#10b981'" onmouseout="this.style.color='#94a3b8'">Partners</a>
@@ -1113,7 +1168,8 @@
     <!-- Footer -->
     <footer>
         <div class="container" style="padding-top: 15px;">
-            <p>© 2026 SpotWarp (ENPLabs Group). All rights reserved. Continuous Automatic Backup & Cross-Cloud Failover for Spot GPUs.</p>
+            <p style="margin-bottom: 10px;">SpotWarp is a product of <b style="color: #cbd5e1;">ENPLABS VENTURES</b>, operating at gpu-action.com &middot; 2727 Steeles Ave West Unit 103-112, Toronto, ON M3J 3G9, Canada &middot; <a href="mailto:info@gpu-action.com" style="color: #94a3b8;">info@gpu-action.com</a></p>
+            <p>© 2026 gpu-action.com (ENPLABS VENTURES). All rights reserved. Continuous Automatic Backup & Cross-Cloud Failover for Spot GPUs.</p>
         </div>
     </footer>
 
@@ -1124,6 +1180,39 @@
     </div>
 
     <script>
+        // The three install-box buttons have called switchInstallTab(), and the
+        // Copy button copyActiveCommand(), since this section shipped -- but
+        // neither function was ever defined, so Windows and PyPI did nothing and
+        // the command could not be copied. Linux only appeared to work because
+        // it is the default rendered into the markup.
+        const INSTALL_COMMANDS = {
+            linux: 'curl -fsSL https://gpu-action.com/install.sh | bash',
+            win:   'irm https://gpu-action.com/install.ps1 | iex',
+            pypi:  'pip install --upgrade spotwarp'
+        };
+
+        function switchInstallTab(os) {
+            const cmd = INSTALL_COMMANDS[os];
+            if (!cmd) return;
+            const el = document.getElementById('installCommandText');
+            if (el) el.textContent = cmd;
+            ['linux', 'win', 'pypi'].forEach(function (key) {
+                const btn = document.getElementById('tab-' + key);
+                if (!btn) return;
+                const on = (key === os);
+                btn.style.background = on ? 'rgba(249,115,22,0.25)' : 'rgba(255,255,255,0.05)';
+                btn.style.border     = on ? '1px solid var(--accent-orange)' : '1px solid rgba(255,255,255,0.15)';
+                btn.style.color      = on ? '#fff' : '#94a3b8';
+            });
+        }
+
+        function copyActiveCommand() {
+            const el = document.getElementById('installCommandText');
+            const cmd = el ? el.textContent.trim() : INSTALL_COMMANDS.linux;
+            navigator.clipboard.writeText(cmd);
+            alert('Install command copied to clipboard!');
+        }
+
         function copyInstallCommand() {
             navigator.clipboard.writeText("pip install spotwarp");
             alert("Install command copied to clipboard!");
@@ -1136,43 +1225,9 @@
 
 
 
-        async function handleTrialSubmit(e) {
-            e.preventDefault();
-            const name = document.getElementById('trialName').value;
-            const email = document.getElementById('trialEmail').value;
-            const resultDiv = document.getElementById('trialResult');
-            
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = '<p style="color: var(--accent-orange);"><i class="fa-solid fa-spinner fa-spin"></i> Activating Trial License...</p>';
-
-            try {
-                const resp = await fetch('/api/v1/request_trial', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({name, email})
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    resultDiv.innerHTML = `
-                        <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid var(--accent-green); padding: 16px; border-radius: 8px; font-size: 0.9rem;">
-                            <p style="color: var(--accent-green); font-weight: 700; margin-bottom: 6px;"><i class="fa-solid fa-circle-check"></i> Trial License Activated!</p>
-                            <p style="margin-bottom: 8px;"><b>License Key:</b> <code>${data.license_key}</code></p>
-                            <p style="font-size: 0.8rem; color: var(--text-muted);">Run in terminal:</p>
-                            <code style="display:block; background: #000; padding: 8px; border-radius: 4px; color: var(--accent-green); margin-top: 4px; white-space: pre-wrap; text-align: left;">${data.install_command}</code>
-                        </div>
-                    `;
-                } else {
-                    resultDiv.innerHTML = `<p style="color: #ef4444;">Error: ${data.message}</p>`;
-                }
-            } catch (err) {
-                resultDiv.innerHTML = '<p style="color: #ef4444;">Error connecting to server. Please try again.</p>';
-            }
-        }
-
-
         let activePromoCode = '';
 
-        function applyPromoCode(forcedCode) {
+        function applyPromoCode(forcedCode, silent) {
             const input = document.getElementById('promoInput');
             const code = (forcedCode || (input ? input.value : '')).trim().toUpperCase();
             const feedback = document.getElementById('promoFeedback');
@@ -1189,14 +1244,34 @@
                 return;
             }
 
-            if (code === 'AIGRID50' || code.includes('AIGRID') || code === 'CREATOR50' || code === 'THEAIGRID') {
-                activePromoCode = 'AIGRID50';
-                if (input) input.value = 'AIGRID50';
+            const annualPrice = document.getElementById('annualPriceDisplay');
+            const annualNote = document.getElementById('annualPriceNote');
+            const annualBtn = document.getElementById('annualSubscribeBtn');
+
+            // Normalise to letters+digits so AIGRID50 / the-ai-grid / TheAIGrid all match.
+            // This list must stay in sync with CREATOR_PARTNERS' aliases in app_gpuaction.py --
+            // it only decides whether to show a live price preview here; the backend
+            // independently re-resolves whatever code reaches checkout, so an alias missing
+            // from this list still works at checkout, it just won't preview the discount.
+            const norm = code.replace(/[^A-Z0-9]/g, '');
+            const KNOWN_CODES = [
+                'THEAIGRID', 'AIGRID', 'AIGRID50', 'THEAIGRID50', 'CREATOR50',
+                'PROMPT', 'PROMPTENGINEER', 'PROMPTENGINEER48', 'PROMPT50',
+                'AIANYTIME', 'AIANYTIME07', 'AIANYTIME50',
+            ];
+
+            if (KNOWN_CODES.includes(norm)) {
+                // Pass the code through as typed (normalised) rather than a hardcoded
+                // value -- the backend maps it to the right creator via resolve_creator().
+                // A previous version of this hardcoded 'AIGRID50' here, which meant every
+                // creator's code was silently misattributed to The AI Grid at checkout.
+                activePromoCode = norm;
+                if (input) input.value = code;
                 if (badge) badge.style.display = 'inline-block';
                 if (feedback) {
                     feedback.style.display = 'block';
                     feedback.style.color = '#10b981';
-                    feedback.innerHTML = '<i class="fa-solid fa-circle-check"></i> Code <strong>AIGRID50</strong> Applied: <strong>50% OFF</strong> for your first 3 months! ($24.50/mo)';
+                    feedback.innerHTML = '<i class="fa-solid fa-circle-check"></i> Code applied — <strong>50% OFF</strong> your first 3 months on Monthly ($24.50/mo), or <strong>20% OFF</strong> your first year on Annual ($392).';
                 }
                 if (monthlyPrice) {
                     monthlyPrice.innerHTML = '<s style="color: #64748b; font-size: 1.8rem; margin-right: 8px;">$49</s><span style="color: #10b981;">$24.50</span> <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ month (First 3 Mo)</span>';
@@ -1206,7 +1281,18 @@
                     monthlyBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
                     monthlyBtn.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.4)';
                 }
-            } else {
+                if (annualPrice) {
+                    annualPrice.innerHTML = '<s style="color: #64748b; font-size: 1.8rem; margin-right: 8px;">$490</s><span style="color: #10b981;">$392</span> <span style="font-size: 1rem; color: var(--text-muted); font-weight: 500;">/ year</span>';
+                }
+                if (annualNote) {
+                    annualNote.innerHTML = '⚡ 20% OFF your first year — equivalent to $32.67 / month';
+                }
+                if (annualBtn) {
+                    annualBtn.innerHTML = '<i class="fa-solid fa-bolt"></i> Subscribe Annual — $392 / yr (20% OFF)';
+                }
+            } else if (!silent) {
+                // Only complain when a visitor actually typed something. An unknown
+                // ?ref= in the URL must not greet them with a red error on load.
                 if (feedback) {
                     feedback.style.display = 'block';
                     feedback.style.color = '#ef4444';
@@ -1218,9 +1304,11 @@
         // Auto-detect ref from URL on load
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const ref = (urlParams.get('ref') || "{{ ref if ref else '' }}").trim().toLowerCase();
-            if (ref && (ref.includes('aigrid') || ref === 'theaigrid')) {
-                applyPromoCode('AIGRID50');
+            // The referral link just pre-fills the creator's code — one identifier
+            // for both paths, so the payout ledger never splits across spellings.
+            const ref = (urlParams.get('ref') || "{{ ref if ref else '' }}").trim();
+            if (ref) {
+                applyPromoCode(ref, true);
             }
         });
 

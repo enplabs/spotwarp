@@ -6,7 +6,7 @@
     <title>Privacy Policy | SpotWarp</title>
     <meta name="description" content="SpotWarp Privacy Policy — how we collect, use, and protect your information.">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://www.gpu-action.com/privacy">
+    <link rel="canonical" href="https://gpu-action.com/privacy">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -33,9 +33,11 @@
         }
         .nav-container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
         .logo {
-            font-size: 1.4rem; font-weight: 800; color: var(--accent-orange);
+            font-size: 1.4rem; font-weight: 800; color: #ffffff;
             text-decoration: none; display: flex; align-items: center; gap: 8px;
         }
+        .logo span { color: var(--accent-orange); }
+        .logo .domain { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); }
         .content { max-width: 760px; margin: 5rem auto; padding: 0 24px 6rem; }
         .back-link {
             display: inline-flex; align-items: center; gap: 6px;
@@ -64,7 +66,7 @@
 <body>
     <header>
         <div class="nav-container">
-            <a href="/" class="logo"><i class="fa-solid fa-server"></i> gpu-action.com</a>
+            <a href="/" class="logo"><i class="fa-solid fa-bolt-lightning" style="color: var(--accent-orange);"></i> Spot<span>Warp</span><span class="domain">gpu-action.com</span></a>
         </div>
     </header>
 
@@ -72,63 +74,81 @@
         <a href="/" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to SpotWarp</a>
 
         <h1>Privacy Policy</h1>
-        <p class="updated">Last updated: June 2026</p>
+        <p class="updated">Last updated: September 2026</p>
 
-        <p>SpotWarp ("we", "our", or "us"), operated by ENPLabs Group, is committed to protecting the privacy of our users, partners, and hardware providers. This policy explains what information we collect, how we use it, and how we protect it.</p>
+        <p>SpotWarp ("we", "our", or "us"), operated by ENPLABS VENTURES, sells one thing: a subscription to a failover and backup daemon that runs on your own machine. Because the software runs locally, very little of your information ever reaches us. This policy explains exactly what does, what does not, and why.</p>
 
         <hr class="divider">
 
-        <h2><i class="fa-solid fa-database fa-sm"></i> 1. Information We Collect</h2>
-        <p>When you submit a GPU cluster reservation or list your GPU capacity, we collect:</p>
+        <h2><i class="fa-solid fa-lock fa-sm"></i> 1. What Never Reaches Us</h2>
+        <p>This is the most important section, so it comes first. The SpotWarp daemon runs on your machine, and the following never leave it:</p>
         <ul>
-            <li>Company or individual name</li>
-            <li>Work or academic email address</li>
-            <li>GPU hardware specifications and quantity</li>
-            <li>Workload description and compute requirements</li>
-            <li>Requested rental duration</li>
+            <li><b>Your Vast.ai and RunPod API keys.</b> They are read locally by the daemon to manage your own instances. They are never transmitted to us, and we have no way to act on your compute accounts.</li>
+            <li><b>Your workspace, training data, checkpoints, and code.</b> Backups are copied from your rented instance to your own machine. They never pass through our servers.</li>
+            <li><b>Your SSH keys and instance credentials.</b></li>
+            <li><b>Your payment card details.</b> Checkout is handled entirely by Stripe; we never see or store card numbers.</li>
         </ul>
-        <p>We may also collect anonymized analytics data such as browser type, referring URLs, and page interactions through privacy-respecting tools.</p>
 
-        <h2><i class="fa-solid fa-circle-check fa-sm"></i> 2. How We Use Your Information</h2>
-        <p>We use the information you provide exclusively to:</p>
+        <h2><i class="fa-solid fa-database fa-sm"></i> 2. What We Do Collect</h2>
+        <p><b>Account and subscription data.</b> When you subscribe, we store your email address, the license key we issue you, your plan, and your renewal or expiry date. The email address comes from Stripe at checkout.</p>
+        <p><b>License checks.</b> The daemon periodically asks our server whether your license is still valid. That request contains your license key and nothing else.</p>
+        <p><b>Usage counters.</b> The daemon reports a small set of aggregate numbers tied to your license key: how many instances are currently being guarded, how many failovers have occurred, the estimated dollars saved, the estimated percentage saved, and the time of the last report. These are counts only — no instance identifiers, no file names, no workload contents.</p>
+        <p><b>Referral attribution.</b> If you arrive through a creator partner link, we store that partner's code in a session cookie so the partner is credited.</p>
+        <p><b>Ordinary server logs.</b> Like any web server, ours records requests, including IP addresses and browser user-agent strings.</p>
+
+        <h2><i class="fa-solid fa-circle-check fa-sm"></i> 3. How We Use It</h2>
         <ul>
-            <li>Match your compute requirements with available GPU cluster capacity</li>
-            <li>Contact you with allocation confirmations and pricing proposals</li>
-            <li>Verify hardware providers and bind nodes to our brokerage network</li>
-            <li>Send transactional system notifications related to your reservation</li>
+            <li>Validating your license so the daemon keeps protecting your instances</li>
+            <li>Managing your subscription, renewals, and refunds</li>
+            <li>Sending transactional email — receipts, license keys, expiry notices, and replies to your support requests</li>
+            <li>Showing you your own usage numbers in your dashboard</li>
+            <li>Crediting creator partners for referrals</li>
         </ul>
-        <p>We do not use your information for unsolicited marketing unrelated to your GPU compute request.</p>
+        <p>We do not send marketing email to customers who have not asked for it.</p>
 
-        <h2><i class="fa-solid fa-ban fa-sm"></i> 3. We Do Not Sell Your Data</h2>
-        <p>We will never sell, rent, or share your personal information with third parties for their own marketing or commercial purposes. Your data is used solely for matching and executing GPU compute transactions.</p>
+        <h2><i class="fa-solid fa-ban fa-sm"></i> 4. We Do Not Sell Your Data</h2>
+        <p>We will never sell, rent, or trade your personal information. We do not run advertising, and we do not share your data with anyone for their own marketing purposes.</p>
 
-        <h2><i class="fa-solid fa-shield-halved fa-sm"></i> 4. Data Storage and Security</h2>
-        <p>Your information is stored securely on AWS infrastructure with industry-standard encryption in transit and at rest. Reservation data is retained for up to 24 months to support ongoing cluster agreements, after which it is permanently deleted.</p>
+        <h2><i class="fa-solid fa-handshake fa-sm"></i> 5. Service Providers We Use</h2>
+        <p>We rely on a small number of providers, each handling only what it needs to:</p>
+        <ul>
+            <li><b>Stripe</b> — payment processing and subscription billing. Stripe handles your card details directly; we receive only your email and subscription status.</li>
+            <li><b>Resend</b> — sending transactional email to your address.</li>
+            <li><b>Cloudflare</b> — DNS and reverse proxy for this website.</li>
+            <li><b>Amazon Web Services</b> — hosting for this website and the license server.</li>
+        </ul>
+        <p>Note that Vast.ai and RunPod are <i>your</i> providers, not ours. You contract with them directly, and their privacy policies govern the data you give them.</p>
 
-        <h2><i class="fa-solid fa-user-shield fa-sm"></i> 5. Your Rights</h2>
+        <h2><i class="fa-solid fa-shield-halved fa-sm"></i> 6. Storage, Security, and Retention</h2>
+        <p>Your account data is stored on AWS infrastructure, and all traffic to this site and our license API is encrypted in transit over HTTPS.</p>
+        <p>We keep your account data for as long as your subscription is active. After you cancel, we retain the billing record only as long as Canadian accounting and tax rules require, and delete the rest on request.</p>
+
+        <h2><i class="fa-solid fa-user-shield fa-sm"></i> 7. Your Rights</h2>
         <p>You have the right to:</p>
         <ul>
             <li>Request a copy of the data we hold about you</li>
             <li>Request correction of inaccurate data</li>
-            <li>Request permanent deletion of your data at any time</li>
-            <li>Opt out of all communications by replying "unsubscribe" to any email</li>
+            <li>Request deletion of your data</li>
+            <li>Opt out of any non-transactional email by replying "unsubscribe"</li>
         </ul>
-        <p>To exercise these rights, contact us at <a href="mailto:info@gpu-action.com">info@gpu-action.com</a>.</p>
+        <p>To exercise these rights, contact us at <a href="mailto:info@gpu-action.com">info@gpu-action.com</a>. We will respond within 30 days.</p>
 
-        <h2><i class="fa-solid fa-cookie fa-sm"></i> 6. Cookies</h2>
-        <p>Our website uses minimal functional cookies only. We do not use advertising or cross-site tracking cookies. Any analytics in use are anonymized and aggregated, and do not identify individual users.</p>
+        <h2><i class="fa-solid fa-cookie fa-sm"></i> 8. Cookies</h2>
+        <p>We run <b>no analytics, advertising, or cross-site tracking scripts of any kind</b> on this site. The only cookies we set are functional session cookies, and there are three of them: one remembering a creator referral code, one keeping you signed in to your customer dashboard, and one for our own admin login.</p>
 
-        <h2><i class="fa-solid fa-envelope fa-sm"></i> 7. Contact Us</h2>
+        <h2><i class="fa-solid fa-envelope fa-sm"></i> 9. Contact Us</h2>
         <p>If you have any questions about this Privacy Policy or how we handle your data, please contact:</p>
         <p>
-            <strong>SpotWarp / ENPLabs Group</strong><br>
+            <strong>SpotWarp &middot; ENPLABS VENTURES</strong><br>
+            2727 Steeles Ave West Unit 103-112, Toronto, ON M3J 3G9, Canada<br>
             Email: <a href="mailto:info@gpu-action.com">info@gpu-action.com</a><br>
             Website: <a href="https://gpu-action.com">gpu-action.com</a>
         </p>
     </div>
 
     <footer>
-        &copy; 2026 gpu-action.com &middot; <a href="https://enplabs.com" target="_blank" style="color: inherit; text-decoration: underline; transition: color 0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'">ENPLabs</a> Group. All rights reserved. &mdash;
+        &copy; 2026 SpotWarp &middot; ENPLABS VENTURES. All rights reserved. &mdash;
+        <a href="/refund">Refund Policy</a> &middot;
         <a href="/">Return to Home</a>
     </footer>
 </body>

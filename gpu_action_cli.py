@@ -1399,28 +1399,11 @@ PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
 LOG_FILE = os.path.join(CONFIG_DIR, "spotwarp_daemon.log")
 
 
-def sniff_local_api_keys():
-    vast_key = None
-    vast_path = os.path.expanduser("~/.vast_api_key")
-    if os.path.exists(vast_path):
-        try:
-            with open(vast_path, "r") as f:
-                vast_key = f.read().strip()
-        except: pass
-
-    runpod_key = None
-    runpod_path = os.path.expanduser("~/.runpod/config.toml")
-    if os.path.exists(runpod_path):
-        try:
-            with open(runpod_path, "r") as f:
-                content = f.read()
-                import re
-                match = re.search(r'api_key\s*=\s*["\']([^"\']+)["\']', content)
-                if match:
-                    runpod_key = match.group(1)
-        except: pass
-    
-    return vast_key, runpod_key
+# sniff_local_api_keys() lives once, near the top of this file (~line 88).
+# A second copy used to be defined here -- weaker validation (no rpa_ prefix
+# check, no length check, skipped VAST_API_KEY/RUNPOD_API_KEY env vars) --
+# and being the later definition, it silently won as the real one at import
+# time. Removed 2026-09-07; every call site already falls back to it correctly.
 
 
 def load_config():

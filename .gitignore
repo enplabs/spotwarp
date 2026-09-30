@@ -142,3 +142,11 @@ _stray_*
 *.key
 *.token
 credentials*
+
+# ----------------------------------------------------
+# Build artifacts (regenerate, never commit)
+# ----------------------------------------------------
+# The Windows download served at /static/spotwarp-windows-x64.zip is repackaged
+# from the published GitHub release, not built here. Restore it after a fresh
+# checkout or redeploy with:  python packaging/build_windows_zip.py
+static/spotwarp-windows-x64.zip

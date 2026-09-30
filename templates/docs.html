@@ -308,7 +308,7 @@
         <div class="container nav-content">
             <a href="/" class="logo">
                 <i class="fa-solid fa-bolt-lightning"></i>
-                GPU<span>-ACTION</span>
+                Spot<span>Warp</span>
             </a>
             <a href="/" class="back-home">
                 <i class="fa-solid fa-house"></i> Return to Home
@@ -333,7 +333,6 @@
                     <span class="sidebar-group-title">Usage Guide</span>
                     <a href="#activation" class="sidebar-link">Start Guard Daemon</a>
                     <a href="#auto-resume" class="sidebar-link">Stateful Auto-Resume</a>
-                    <a href="#dashboard-link" class="sidebar-link">Console Dashboard Sync</a>
                 </div>
                 <div class="sidebar-group">
                     <span class="sidebar-group-title">FAQs & Support</span>
@@ -396,12 +395,12 @@ curl -fsSL https://gpu-action.com/install.sh | bash
 # Windows PowerShell
 irm https://gpu-action.com/install.ps1 | iex</code></pre>
 
-                    <h3>Option B: Standalone C-Binaries (GitHub Releases)</h3>
-                    <p>Pre-compiled standalone binaries with embedded C-engine are available directly on <a href="https://github.com/enplabs/spotwarp/releases/latest" target="_blank" style="color:var(--accent-cyan);">GitHub Releases</a>:</p>
+                    <h3>Option B: Standalone C-Binaries (Direct Download)</h3>
+                    <p>Pre-compiled standalone binaries with embedded C-engine, published on <a href="https://github.com/enplabs/spotwarp/releases/tag/v3.4.3" target="_blank" style="color:var(--accent-cyan);">GitHub Releases</a> with <a href="https://github.com/enplabs/spotwarp/releases/download/v3.4.3/SHA256SUMS.txt" target="_blank" style="color:var(--accent-cyan);">SHA256 checksums</a> you can verify:</p>
                     <ul>
-                        <li><b>Linux x86_64:</b> <code>spotwarp-linux-x86_64</code> (13MB, glibc 2.31+)</li>
-                        <li><b>macOS:</b> <code>spotwarp-darwin-arm64</code> (6MB, Apple Silicon)</li>
-                        <li><b>Windows:</b> <a href="/static/spotwarp-windows-x64.zip" style="color:var(--accent-cyan); font-weight:600;"><code>spotwarp-windows-x64.zip</code></a> (6MB, includes standalone executable)</li>
+                        <li><b>Linux x86_64:</b> <a href="https://github.com/enplabs/spotwarp/releases/download/v3.4.3/spotwarp-linux-x86_64" style="color:var(--accent-cyan); font-weight:600;"><code>spotwarp-linux-x86_64</code></a> (13MB, glibc 2.31+)</li>
+                        <li><b>macOS:</b> <a href="https://github.com/enplabs/spotwarp/releases/download/v3.4.3/spotwarp-darwin-arm64" style="color:var(--accent-cyan); font-weight:600;"><code>spotwarp-darwin-arm64</code></a> (6MB, Apple Silicon)</li>
+                        <li><b>Windows:</b> <a href="/static/spotwarp-windows-x64.zip" style="color:var(--accent-cyan); font-weight:600;"><code>spotwarp-windows-x64.zip</code></a> (6MB) &mdash; the same released Windows binary, served from this site as a ZIP because browsers and antivirus commonly block a bare <code>.exe</code> download. Extract it and you get <code>spotwarp.exe</code>, byte-identical to <code>spotwarp-windows-x64.exe</code> on the release page.</li>
                     </ul>
 
                     <h3>Option C: PyPI Package (For Docker / Python Workflows)</h3>
@@ -460,7 +459,7 @@ spotwarp stop     # Gracefully stop the background guard
 spotwarp config   # View your current local configuration</code></pre>
 
                     <div class="callout">
-                        <div class="callout-title"><i class="fa-solid fa-shield-halved"></i> Any-to-Any Cross-Cloud Failover (v3.4.1)</div>
+                        <div class="callout-title"><i class="fa-solid fa-shield-halved"></i> Any-to-Any Cross-Cloud Failover (v3.4.3)</div>
                         <p style="margin: 0; font-size: 0.9rem;">
                             SpotWarp supports seamless bidirectional failover between Vast.ai and RunPod. By default, it automatically sniffs both local keys and defaults to <code>--provider auto</code> and <code>--failover-policy same-cloud-first</code>. You can override this behavior explicitly via CLI flags:
                         </p>
@@ -490,18 +489,6 @@ spotwarp config   # View your current local configuration</code></pre>
                     </p>
                 </section>
                 
-                <!-- 6. Console Dashboard Sync -->
-                <section id="dashboard-link" class="docs-section">
-                    <h2>Console Dashboard Sync</h2>
-                    <p>
-                        Once the daemon starts, it registers active telemetry with the central server:
-                    </p>
-                    <ul>
-                        <li>Log in to the <a href="/dashboard" target="_blank" style="color: var(--accent-cyan); font-weight: 600; text-decoration: underline;">Live Console Dashboard</a> using your license key.</li>
-                        <li>Monitor active instances (specs, uptime, SSH ports), cumulative cost savings counter ($ / %), and live daemon status logs in real time.</li>
-                    </ul>
-                </section>
-                
                 <!-- 7. Security -->
                 <section id="security" class="docs-section">
                     <h2>Security & Sandbox</h2>
@@ -519,7 +506,7 @@ spotwarp config   # View your current local configuration</code></pre>
 
                     <h3>"License verification endpoint returned status 401"</h3>
                     <p>
-                        Your <code>--license-key</code> value doesn't match an active license. This is almost always a copy-paste issue — a prefix like <code>TRIAL_</code> got dropped, or two keys got concatenated together. Copy the full key directly from your confirmation email or the <a href="/dashboard" target="_blank" style="color: var(--accent-cyan); text-decoration: underline;">Console Dashboard</a> and paste it in one piece.
+                        Your <code>--license-key</code> value doesn't match an active license. This is almost always a copy-paste issue — a prefix like <code>TRIAL_</code> got dropped, or two keys got concatenated together. Copy the full key directly from your confirmation email and paste it in one piece. Still stuck? Email <a href="mailto:info@gpu-action.com" style="color: var(--accent-cyan); text-decoration: underline;">info@gpu-action.com</a> and we'll look it up.
                     </p>
 
                     <h3>"Monitoring 0 instances"</h3>

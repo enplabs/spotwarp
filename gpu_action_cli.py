@@ -418,8 +418,10 @@ class SaladFailoverGuard:
         if not self.resume_cmd:
             return
         print(f"[Handover] Auto-resuming workload on replacement Salad node: {self.resume_cmd}")
-        remote_script = f"cd /workspace 2>/dev/null || true; nohup {self.resume_cmd} > /workspace/spotwarp_resume.log 2>&1 &"
-        cmd = ["ssh"] + self._ssh_base_args(port) + [f"root@{host}", f"bash -c '{remote_script}'"]
+        import base64
+        inner_script = f"cd /workspace 2>/dev/null || true\nnohup {self.resume_cmd} > /workspace/spotwarp_resume.log 2>&1 < /dev/null &\nsleep 1\n"
+        b64_script = base64.b64encode(inner_script.encode("utf-8")).decode("ascii")
+        cmd = ["ssh"] + self._ssh_base_args(port) + [f"root@{host}", f"echo {b64_script} | base64 -d | bash"]
         try:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
             print("[+] Workload resumed in background (/workspace/spotwarp_resume.log)")

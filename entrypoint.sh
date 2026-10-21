@@ -45,7 +45,7 @@ if [ $# -eq 0 ]; then
             JUPYTER_TOKEN=$(python3 -c "import secrets; print(secrets.token_hex(24))")
             echo "🔐 Generated session JUPYTER_TOKEN: $JUPYTER_TOKEN"
         fi
-        exec jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="$JUPYTER_TOKEN"
+        exec jupyter notebook --ip=:: --port=8888 --no-browser --allow-root --NotebookApp.token="$JUPYTER_TOKEN"
     else
         exec /bin/bash
     fi

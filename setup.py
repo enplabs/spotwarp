@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="spotwarp",
-    version="3.5.1",
+    version="3.5.2",
     description="Zero-Loss Fault-Tolerance & Checkpoint Failover Daemon for SaladCloud Container Engine (Same-Cloud Salad -> Salad Recovery)",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

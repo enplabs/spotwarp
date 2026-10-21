@@ -1,6 +1,6 @@
 # Zero-Loss Checkpoint Recovery on SaladCloud: Architectural Overview
 
-*Published by the SpotWarp Engineering Team (v3.5.1)*
+*Published by the SpotWarp Engineering Team (v3.5.2)*
 
 SaladCloud provides unmatched price-to-performance by aggregating tens of thousands of consumer RTX 3080, 3090, 4080, and 4090 GPUs worldwide. Because nodes on a residential mesh can disconnect when host machines go offline, stateful workloads such as LoRA fine-tuning and PyTorch training require resilient checkpoint management.
 

@@ -21,7 +21,7 @@ echo " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   "
 echo "       |_|                                |_|      "
 echo -e "${RESET}"
 echo -e "${BOLD}SpotWarp: Zero-Loss Checkpoint Backup & Same-Cloud Failover for SaladCloud${RESET}"
-echo -e "Version: ${GREEN}v3.5.1${RESET}\n"
+echo -e "Version: ${GREEN}v3.5.2${RESET}\n"
 
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
@@ -94,7 +94,7 @@ case ":$PATH:" in
 esac
 
 echo -e "\n${BOLD}================================================================${RESET}"
-echo -e "${GREEN}[+] SpotWarp v3.5.1 (SaladCloud Edition) is READY!${RESET}"
+echo -e "${GREEN}[+] SpotWarp v3.5.2 (SaladCloud Edition) is READY!${RESET}"
 echo -e "\n${BOLD}Next Steps:${RESET}"
 echo -e "  1. Configure your SaladCloud API key & Organization:"
 echo -e "     ${CYAN}${BOLD}spotwarp init${RESET}"

@@ -1,4 +1,4 @@
-# SpotWarp v3.5.1 Production Docker Environment for SaladCloud Container Engine (SCE)
+# SpotWarp v3.5.2 Production Docker Environment for SaladCloud Container Engine (SCE)
 FROM pytorch/pytorch:2.1.2-cuda12.1-cudnn8-runtime
 
 # Install system dependencies (including rsync & ssh client for delta-sync)

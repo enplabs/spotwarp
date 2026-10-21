@@ -1,4 +1,4 @@
-# SpotWarp — SaladCloud Quick Setup Guide (v3.5.1)
+# SpotWarp — SaladCloud Quick Setup Guide (v3.5.2)
 
 Three simple steps to protect your SaladCloud GPU containers with automated local checkpoint backups and Same-Cloud (`Salad ➡️ Salad`) failover.
 
@@ -45,6 +45,16 @@ spotwarp start -d
 # Option B: Foreground live console
 spotwarp start
 ```
+
+### Warm Standby (on by default)
+While the guard runs, SpotWarp keeps your container group at 2 replicas so a second node is already running when the active one is lost. The second replica is billed by SaladCloud like any other running replica. To turn it off:
+
+```bash
+spotwarp start -d --no-standby
+# or: SPOTWARP_WARM_STANDBY=0, or "warm_standby": false in ~/.spotwarp/config.json
+```
+
+Without a standby, recovery waits for SaladCloud to allocate a new node, which takes minutes.
 
 ### Auto-Resume Training on New Salad Nodes (Optional)
 To automatically restart your training script inside the replacement SaladCloud container after checkpoints are restored:

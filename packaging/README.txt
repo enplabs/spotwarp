@@ -1,5 +1,5 @@
 ================================================================================
-SpotWarp v3.5.1 Standalone C-Binary for SaladCloud (Windows x64)
+SpotWarp v3.5.2 Standalone C-Binary for SaladCloud (Windows x64)
 ================================================================================
 
 SpotWarp is a lightweight local daemon that protects your SaladCloud GPU

@@ -43,7 +43,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.5.1"
+VERSION = "3.5.2"
 CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
 SALAD_API_BASE = "https://api.salad.com/api/public"
@@ -147,6 +147,7 @@ class SaladFailoverGuard:
         ssh_key_path: str = None,
         resume_cmd: str = None,
         backup_dir: str = None,
+        warm_standby: bool = True,
     ):
         sniffed_key, sniffed_org, sniffed_proj = sniff_local_salad_credentials()
         self.license_key = (license_key or "").strip()
@@ -154,6 +155,7 @@ class SaladFailoverGuard:
         self.salad_org = (salad_org or sniffed_org or "").strip()
         self.salad_project = (salad_project or sniffed_proj or "default").strip()
         self.salad_container = (salad_container or "").strip()
+        self.warm_standby = bool(warm_standby)
         self.ssh_key_path = ssh_key_path or os.path.expanduser("~/.ssh/id_ed25519")
         self.resume_cmd = resume_cmd
         self.backup_root = os.path.abspath(
@@ -577,6 +579,7 @@ class SaladFailoverGuard:
         print(f"  Salad API Key:    {'Configured' if self.salad_api_key else 'Not set'}")
         print(f"  Backup Root:      {self.backup_root}")
         print(f"  Sync Strategy:    {'rsync (delta)' if self.use_rsync else 'scp'}")
+        print(f"  Warm Standby:     {'ON (scales the container group to 2 replicas; the 2nd replica is billed by SaladCloud)' if self.warm_standby else 'OFF (replica count is left unchanged; recovery waits for SaladCloud to allocate a new node)'}")
         print(f"  Resume Command:   {self.resume_cmd or 'None (checkpoint sync only)'}")
         print("========================================================")
 
@@ -618,7 +621,8 @@ class SaladFailoverGuard:
                                 "port": port,
                             }
                             print(f"\n[Tracked] SaladCloud Container '{cname}' -> Instance {inst_id[:8]} (Machine {mach_id[:8]}, SSH {host}:{port})")
-                            self.ensure_warm_standby(cname, min_replicas=2)
+                            if self.warm_standby:
+                                self.ensure_warm_standby(cname, min_replicas=2)
                             self.start_backup_sync(cname, inst_id, host, port)
                     else:
                         prev = self.tracked_containers[cname]
@@ -648,6 +652,18 @@ class SaladFailoverGuard:
             for cname in list(self.stop_events.keys()):
                 self.stop_backup_sync(cname)
             print("[SpotWarp Guard] Stopped gracefully.")
+
+
+def resolve_warm_standby(no_standby_flag: bool, cfg: dict) -> bool:
+    """Warm standby is ON unless --no-standby, SPOTWARP_WARM_STANDBY=0, or "warm_standby": false in the config."""
+    if no_standby_flag:
+        return False
+    env = os.getenv("SPOTWARP_WARM_STANDBY", "").strip().lower()
+    if env in ("0", "false", "off", "no"):
+        return False
+    if env in ("1", "true", "on", "yes"):
+        return True
+    return cfg.get("warm_standby", True) is not False
 
 
 def load_config() -> dict:
@@ -730,6 +746,20 @@ def cmd_init():
     except (EOFError, KeyboardInterrupt):
         backup_in = ""
     cfg["backup_dir"] = backup_in or current_backup
+
+    standby_now = "Y" if cfg.get("warm_standby", True) is not False else "n"
+    standby_prompt = (
+        "Keep a warm standby replica? It scales your container group to 2 replicas (the 2nd is billed by SaladCloud) "
+        f"so recovery takes seconds instead of minutes [{standby_now}]: "
+    )
+    try:
+        standby_in = input(standby_prompt).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        standby_in = ""
+    if standby_in in ("n", "no"):
+        cfg["warm_standby"] = False
+    elif standby_in in ("y", "yes"):
+        cfg["warm_standby"] = True
 
     save_config(cfg)
     print("\n✅ Configuration saved to ~/.spotwarp/config.json (100% Local)")
@@ -820,6 +850,7 @@ def cmd_config():
     salad_p = cfg.get("salad_project", "") or sniffed_proj or "default"
     salad_c = cfg.get("salad_container", "") or "All active containers"
     backup = cfg.get("backup_dir", "./backups")
+    standby = "ON" if resolve_warm_standby(False, cfg) else "OFF"
 
     k_masked = f"{salad_k[:8]}...{salad_k[-4:]}" if len(salad_k) > 12 else ("Set" if salad_k else "Not set")
     print(f"  License Key:      {lic}")
@@ -828,6 +859,7 @@ def cmd_config():
     print(f"  Project:          {salad_p}")
     print(f"  Target Container: {salad_c}")
     print(f"  Backup Dir:       {backup}")
+    print(f"  Warm Standby:     {standby}")
     print("=======================================================")
 
 
@@ -851,6 +883,10 @@ def main():
     start_parser.add_argument("--ssh-key", default=None, help="Path to private SSH key for Salad container access")
     start_parser.add_argument("--resume-cmd", default=None, help="Training command to auto-resume inside replacement Salad node")
     start_parser.add_argument("--backup-dir", default=None, help="Local directory for workspace checkpoint backups")
+    start_parser.add_argument(
+        "--no-standby", action="store_true",
+        help="Do not scale the container group to 2 replicas (no warm standby, no second-replica cost; recovery waits for SaladCloud to allocate a new node)",
+    )
 
     subparsers.add_parser("status", help="Check background daemon status")
     subparsers.add_parser("stop", help="Stop the background daemon")
@@ -871,6 +907,7 @@ def main():
         resume_c = getattr(args, "resume_cmd", None) or cfg.get("resume_cmd")
         backup_d = getattr(args, "backup_dir", None) or os.getenv("SPOTWARP_BACKUP_DIR") or cfg.get("backup_dir")
         daemon_mode = getattr(args, "daemon", False)
+        warm_standby = resolve_warm_standby(getattr(args, "no_standby", False), cfg)
 
         if daemon_mode:
             os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -889,6 +926,8 @@ def main():
                 cmd.extend(["--resume-cmd", resume_c])
             if backup_d:
                 cmd.extend(["--backup-dir", backup_d])
+            if not warm_standby:
+                cmd.append("--no-standby")
 
             with open(LOG_FILE, "a", encoding="utf-8") as out:
                 if sys.platform == 'win32':
@@ -915,6 +954,7 @@ def main():
             ssh_key_path=ssh_k,
             resume_cmd=resume_c,
             backup_dir=backup_d,
+            warm_standby=warm_standby,
         )
         guard.run_guard_loop()
 

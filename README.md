@@ -1,12 +1,12 @@
 # ⚡ SpotWarp: Zero-Loss Fault-Tolerance & Checkpoint Recovery for SaladCloud
 
-[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi&cacheSeconds=60&cb=351)](https://pypi.org/project/spotwarp/)
-[![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary&cacheSeconds=60&cb=351)](https://github.com/enplabs/spotwarp/releases/latest)
+[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi&cacheSeconds=60&cb=352)](https://pypi.org/project/spotwarp/)
+[![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary&cacheSeconds=60&cb=352)](https://github.com/enplabs/spotwarp/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![SaladCloud Ready](https://img.shields.io/badge/SaladCloud-Same--Cloud_Recovery-green.svg)](https://gpu-action.com)
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/enplabs/spotwarp/main/static/spotwarp_demo.gif?v=351" alt="SpotWarp Live Failover Demo" width="100%" />
+  <img src="https://raw.githubusercontent.com/enplabs/spotwarp/main/static/spotwarp_demo.gif?v=352" alt="SpotWarp Live Failover Demo" width="100%" />
 </div>
 
 SaladCloud offers the most cost-effective distributed GPU compute in the world. However, because residential and gaming nodes can disconnect or be preempted at any moment, running multi-hour PyTorch training, LoRA fine-tuning, or stateful generative jobs without automated checkpoint protection risks losing hours of progress.
@@ -17,7 +17,7 @@ SaladCloud offers the most cost-effective distributed GPU compute in the world. 
 
 ## 🆚 SaladCloud Workloads: Standard vs. With SpotWarp
 
-| Feature | Standard Interruptible Container | With SpotWarp (v3.5.1) |
+| Feature | Standard Interruptible Container | With SpotWarp (v3.5.2) |
 | :--- | :--- | :--- |
 | **Workspace State on Node Preemption** | Ephemeral container storage is wiped when the host disconnects. | **Continuously backed up** to your local machine in the background before preemption happens. |
 | **Node Reallocation Handling** | New Salad node starts with a clean slate (`Epoch 0`). | **100% Autopilot (`Salad ➡️ Salad`)**. Detects the replacement Salad node and restores `/workspace` automatically. |
@@ -31,6 +31,7 @@ SaladCloud offers the most cost-effective distributed GPU compute in the world. 
 
 * 🛡️ **Same-Cloud Retention (`Salad ➡️ Salad`)**: Built specifically to keep long-running AI workloads inside SaladCloud. When an edge node disconnects, SpotWarp waits for SaladCloud Container Engine (SCE) to allocate a replacement node in your container group, verifies SSH gateway readiness, and restores your workspace automatically.
 * ⚡ **Continuous Delta-Sync Backup**: Runs background `rsync` (or `scp` on Windows) incremental syncs of `/workspace/` every 30 seconds while skipping files modified within the last 10 seconds to prevent torn checkpoint reads.
+* 🔁 **Warm Standby (on by default)**: While SpotWarp guards a container group it keeps the group at 2 replicas, so a second node is already running when the active one is lost. In our live test (2026-10-21, one run, 5 MB checkpoint) the restore and restart took 17.1 s once the standby was running. The second replica is billed by SaladCloud like any other running replica. Turn it off with `--no-standby` (or `SPOTWARP_WARM_STANDBY=0`, or `"warm_standby": false` in `~/.spotwarp/config.json`). Without a standby, recovery waits for SaladCloud to allocate a new node, which takes minutes.
 * 🔑 **Twelve-Factor Encrypted Secret Support**: Follows SaladCloud best practices by reading `LICENSE_KEY` via encrypted environment variables, with a built-in **Zero-Friction 14-Day SaladCloud Evaluation Mode** (`SALAD-TRIAL`) so developers can deploy from the Salad Portal with zero initial sign-up friction.
 * 🔒 **100% Local Execution**: No third-party proxy servers or cloud controller VMs required.
 
@@ -65,6 +66,8 @@ spotwarp init
 # Start 24/7 background guard with automatic training resume
 spotwarp start -d --org <YOUR_SALAD_ORG> --container <CONTAINER_NAME> \
   --resume-cmd "python3 /workspace/train.py --resume"
+
+# Add --no-standby to skip the second (warm standby) replica and its cost
 ```
 
 ### Step 4. Manage the Daemon

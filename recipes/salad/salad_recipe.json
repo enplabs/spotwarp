@@ -23,7 +23,7 @@
   },
   "autostart_policy": true,
   "restart_policy": "always",
-  "replicas": 2,
+  "replicas": 1,
   "networking": {
     "protocol": "http",
     "port": 8888,

@@ -5,7 +5,7 @@ SERVER_URL=${GPU_ACTION_SERVER_URL:-"https://gpu-action.com"}
 LICENSE_VAL=${LICENSE_KEY:-"SALAD-TRIAL"}
 
 echo "=========================================================="
-echo "   SpotWarp Fault-Tolerance Container v3.5.1 (SaladCloud)"
+echo "   SpotWarp Fault-Tolerance Container v3.5.2 (SaladCloud)"
 echo "=========================================================="
 
 mkdir -p /workspace/checkpoints

@@ -1,7 +1,7 @@
 # ⚡ SpotWarp: Zero-Loss Fault-Tolerance & Checkpoint Recovery for SaladCloud
 
-[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi)](https://pypi.org/project/spotwarp/)
-[![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary)](https://github.com/enplabs/spotwarp/releases/latest)
+[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi&cacheSeconds=60)](https://pypi.org/project/spotwarp/)
+[![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary&cacheSeconds=60)](https://github.com/enplabs/spotwarp/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![SaladCloud Ready](https://img.shields.io/badge/SaladCloud-Same--Cloud_Recovery-green.svg)](https://gpu-action.com)
 

@@ -6,7 +6,7 @@
 [![SaladCloud Ready](https://img.shields.io/badge/SaladCloud-Same--Cloud_Recovery-green.svg)](https://gpu-action.com)
 
 <div align="center">
-  <img src="static/spotwarp_demo.gif" alt="SpotWarp Live Failover Demo" width="100%" />
+  <img src="https://raw.githubusercontent.com/enplabs/spotwarp/main/static/spotwarp_demo.gif" alt="SpotWarp Live Failover Demo" width="100%" />
 </div>
 
 SaladCloud offers the most cost-effective distributed GPU compute in the world. However, because residential and gaming nodes can disconnect or be preempted at any moment, running multi-hour PyTorch training, LoRA fine-tuning, or stateful generative jobs without automated checkpoint protection risks losing hours of progress.

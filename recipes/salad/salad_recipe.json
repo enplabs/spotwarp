@@ -1,7 +1,7 @@
 {
   "name": "spotwarp-zero-eviction-guard",
-  "display_name": "SpotWarp Fault-Tolerant PyTorch - Zero-Loss Checkpoint Guard",
-  "description": "Fault-tolerant PyTorch 2.1 / CUDA 12.1 container recipe for SaladCloud. Pre-configured for continuous checkpoint delta-sync and automated Same-Cloud (Salad -> Salad) node reallocation recovery.",
+  "display_name": "SpotWarp PyTorch 2.1 - Checkpoint Backup and Restore",
+  "description": "PyTorch 2.1 / CUDA 12.1 with Jupyter, ready for SpotWarp: the SpotWarp client on your own machine backs up /workspace and restores it onto a replacement Salad node.",
   "container": {
     "image": "ghcr.io/enplabs/spotwarp:pytorch2.1",
     "resources": {

@@ -413,17 +413,53 @@ class SaladFailoverGuard:
             print(f"[-] Restore error: {e}")
             return False
 
+    def ensure_warm_standby(self, container_name: str, min_replicas: int = 2) -> bool:
+        """Ensures the SaladCloud container group maintains a Warm Standby replica (replicas >= 2)
+        so Same-Cloud failover completes in ~10-20 seconds with zero cold-download wait."""
+        if not self.salad_api_key or not self.salad_org:
+            return False
+        url = (
+            f"{SALAD_API_BASE}/organizations/{self.salad_org}"
+            f"/projects/{self.salad_project}/containers/{container_name}"
+        )
+        try:
+            r_get = requests.get(url, headers=self._salad_headers(), timeout=15)
+            if r_get.status_code == 200:
+                cur_replicas = int(r_get.json().get("replicas") or 1)
+                if cur_replicas >= min_replicas:
+                    return True
+            patch_headers = self._salad_headers()
+            patch_headers["Content-Type"] = "application/merge-patch+json"
+            r_patch = requests.patch(url, headers=patch_headers, json={"replicas": min_replicas}, timeout=15)
+            if r_patch.status_code in (200, 202, 204):
+                print(f"[Warm-Standby] Scaled '{container_name}' to {min_replicas} replicas (1 Active + 1 Warm Standby for instant <20s failover).")
+                return True
+        except Exception:
+            pass
+        return False
+
     def execute_resume_command(self, host: str, port: int):
         """Executes the user's training resume command inside the replacement Salad container."""
         if not self.resume_cmd:
             return
         print(f"[Handover] Auto-resuming workload on replacement Salad node: {self.resume_cmd}")
         import base64
-        inner_script = f"cd /workspace 2>/dev/null || true\nnohup {self.resume_cmd} > /workspace/spotwarp_resume.log 2>&1 < /dev/null &\nsleep 1\n"
+        inner_script = (
+            "#!/bin/bash\n"
+            "export PATH=/opt/conda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH\n"
+            "cd /workspace 2>/dev/null || true\n"
+            f"{self.resume_cmd}\n"
+        )
         b64_script = base64.b64encode(inner_script.encode("utf-8")).decode("ascii")
-        cmd = ["ssh"] + self._ssh_base_args(port) + [f"root@{host}", f"echo {b64_script} | base64 -d | bash"]
+        remote_cmd = (
+            f"bash -c 'echo {b64_script} | base64 -d > /workspace/spotwarp_resume.sh && "
+            "chmod +x /workspace/spotwarp_resume.sh && "
+            "nohup /workspace/spotwarp_resume.sh > /workspace/spotwarp_resume.log 2>&1 < /dev/null & "
+            "sleep 2 && cat /workspace/spotwarp_resume.log 2>/dev/null || true'"
+        )
+        cmd = ["ssh"] + self._ssh_base_args(port) + [f"root@{host}", remote_cmd]
         try:
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+            subprocess.run(cmd, capture_output=True, text=True, timeout=25)
             print("[+] Workload resumed in background (/workspace/spotwarp_resume.log)")
         except Exception as e:
             print(f"[-] Resume command warning: {e}")
@@ -440,6 +476,7 @@ class SaladFailoverGuard:
 
         print(f"[*] Waiting for SaladCloud Container Engine to allocate replacement node for '{container_name}'...")
         new_inst = None
+        pull_tracker = {}
         while time.time() - t_start < 1800:
             instances = self.get_container_instances(container_name)
             running = [
@@ -453,6 +490,22 @@ class SaladFailoverGuard:
             if candidate:
                 new_inst = candidate
                 break
+
+            # Auto-evict stalled replacement nodes stuck at 0% download for > 120s
+            for i in instances:
+                iid = i.get("id")
+                if not iid or iid == old_id:
+                    continue
+                if i.get("state") == "downloading":
+                    prog = float(i.get("pulling_progress") or 0.0)
+                    if iid not in pull_tracker:
+                        pull_tracker[iid] = (time.time(), prog)
+                    else:
+                        t_first, p_first = pull_tracker[iid]
+                        if (time.time() - t_first > 120) and (prog - p_first < 0.02):
+                            print(f"[Auto-Evict] Replacement node {iid[:8]} stalled on image pull ({prog*100:.1f}% after {int(time.time()-t_first)}s). Triggering automatic reallocation...")
+                            self.trigger_reallocate(container_name, iid)
+                            del pull_tracker[iid]
             time.sleep(5)
 
         if not new_inst:
@@ -562,6 +615,7 @@ class SaladFailoverGuard:
                                 "port": port,
                             }
                             print(f"\n[Tracked] SaladCloud Container '{cname}' -> Instance {inst_id[:8]} (Machine {mach_id[:8]}, SSH {host}:{port})")
+                            self.ensure_warm_standby(cname, min_replicas=2)
                             self.start_backup_sync(cname, inst_id, host, port)
                     else:
                         prev = self.tracked_containers[cname]

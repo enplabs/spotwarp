@@ -1,4 +1,4 @@
-# SpotWarp — SaladCloud Quick Setup Guide (v3.5.0)
+# SpotWarp — SaladCloud Quick Setup Guide (v3.5.1)
 
 Three simple steps to protect your SaladCloud GPU containers with automated local checkpoint backups and Same-Cloud (`Salad ➡️ Salad`) failover.
 

@@ -17,7 +17,7 @@ SaladCloud offers the most cost-effective distributed GPU compute in the world. 
 
 ## 🆚 SaladCloud Workloads: Standard vs. With SpotWarp
 
-| Feature | Standard Interruptible Container | With SpotWarp (v3.5.0) |
+| Feature | Standard Interruptible Container | With SpotWarp (v3.5.1) |
 | :--- | :--- | :--- |
 | **Workspace State on Node Preemption** | Ephemeral container storage is wiped when the host disconnects. | **Continuously backed up** to your local machine in the background before preemption happens. |
 | **Node Reallocation Handling** | New Salad node starts with a clean slate (`Epoch 0`). | **100% Autopilot (`Salad ➡️ Salad`)**. Detects the replacement Salad node and restores `/workspace` automatically. |

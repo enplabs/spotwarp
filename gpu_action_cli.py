@@ -43,7 +43,7 @@ try:
 except ImportError:
     pass
 
-VERSION = "3.5.0"
+VERSION = "3.5.1"
 CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
 SALAD_API_BASE = "https://api.salad.com/api/public"
@@ -187,6 +187,9 @@ class SaladFailoverGuard:
         if self.ssh_key_path and os.path.exists(self.ssh_key_path):
             args.extend(["-i", self.ssh_key_path])
         return args
+
+    def _salad_headers(self) -> dict:
+        return dict(self.headers)
 
     def verify_license(self) -> bool:
         """Verifies active subscription or enables Zero-Friction 14-Day SaladCloud Evaluation Mode."""

@@ -1,12 +1,12 @@
 # ⚡ SpotWarp: Zero-Loss Fault-Tolerance & Checkpoint Recovery for SaladCloud
 
-[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi&cacheSeconds=60)](https://pypi.org/project/spotwarp/)
-[![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary&cacheSeconds=60)](https://github.com/enplabs/spotwarp/releases/latest)
+[![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi&cacheSeconds=60&cb=351)](https://pypi.org/project/spotwarp/)
+[![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary&cacheSeconds=60&cb=351)](https://github.com/enplabs/spotwarp/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![SaladCloud Ready](https://img.shields.io/badge/SaladCloud-Same--Cloud_Recovery-green.svg)](https://gpu-action.com)
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/enplabs/spotwarp/main/static/spotwarp_demo.gif" alt="SpotWarp Live Failover Demo" width="100%" />
+  <img src="https://raw.githubusercontent.com/enplabs/spotwarp/main/static/spotwarp_demo.gif?v=351" alt="SpotWarp Live Failover Demo" width="100%" />
 </div>
 
 SaladCloud offers the most cost-effective distributed GPU compute in the world. However, because residential and gaming nodes can disconnect or be preempted at any moment, running multi-hour PyTorch training, LoRA fine-tuning, or stateful generative jobs without automated checkpoint protection risks losing hours of progress.

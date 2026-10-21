@@ -23,7 +23,7 @@ import sys
 import urllib.request
 import zipfile
 
-RELEASE_TAG = "v3.4.3"
+RELEASE_TAG = "v3.5.1"
 REPO = "enplabs/spotwarp"
 ASSET = "spotwarp-windows-x64.exe"
 

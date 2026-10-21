@@ -1,121 +1,102 @@
-# ⚡ SpotWarp: Never Lose a Training Run to a Spot GPU Eviction
+# ⚡ SpotWarp: Zero-Loss Fault-Tolerance & Checkpoint Recovery for SaladCloud
 
 [![PyPI Version](https://img.shields.io/pypi/v/spotwarp.svg?color=blue&label=pypi)](https://pypi.org/project/spotwarp/)
 [![GitHub Release](https://img.shields.io/github/v/release/enplabs/spotwarp?color=orange&label=standalone%20binary)](https://github.com/enplabs/spotwarp/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Security: Audited](https://img.shields.io/badge/Security-Zero--Key--Leakage-green.svg)](https://gpu-action.com)
+[![SaladCloud Ready](https://img.shields.io/badge/SaladCloud-Same--Cloud_Recovery-green.svg)](https://gpu-action.com)
 
 <div align="center">
-  <img src="static/spotwarp_demo.gif" alt="SpotWarp 30s Terminal Demo" width="100%" />
+  <img src="static/spotwarp_demo.gif" alt="SpotWarp Live Failover Demo" width="100%" />
 </div>
 
-The real cost of a Spot GPU eviction was never the few minutes of downtime — it's the hours of training progress that vanish with it. **SpotWarp** is a high-performance, standalone C-binary (Zero-Python required) and lightweight daemon that runs continuous automatic backups of your workspace in the background, so an eviction never costs you your work. Automatic failover (Vast.ai ⇄ Vast.ai, and cross-cloud with RunPod) is what turns that protected workspace into a hands-off recovery, but the backup is the part that actually saves you.
+SaladCloud offers the most cost-effective distributed GPU compute in the world. However, because residential and gaming nodes can disconnect or be preempted at any moment, running multi-hour PyTorch training, LoRA fine-tuning, or stateful generative jobs without automated checkpoint protection risks losing hours of progress.
 
-Save **up to 70% on GPU compute bills** by safely using Spot pricing instead of on-demand — the eviction risk that normally makes that a gamble is exactly what SpotWarp removes.
+**SpotWarp** is a lightweight, 100% local client-side daemon and companion SaladCloud Container Recipe designed exclusively to keep your workloads locked and running inside **SaladCloud** (`Salad ➡️ Salad` Same-Cloud Recovery). It continuously streams incremental `/workspace` backups to your local machine over SSH (`rsync`/`scp`) and automatically restores your exact training state onto the replacement SaladCloud node the moment a reallocation occurs—with **zero S3 storage fees** and **zero cloud controller VM overhead**.
 
 ---
 
-## 🆚 Spot GPU Eviction: Standard vs. SpotWarp
+## 🆚 SaladCloud Workloads: Standard vs. With SpotWarp
 
-| Feature | Standard Spot Instance | With SpotWarp (v3.4.3) |
+| Feature | Standard Interruptible Container | With SpotWarp (v3.5.0) |
 | :--- | :--- | :--- |
-| **Your Data, on Eviction** | Gone. Whatever wasn't manually saved is lost with the instance. | **Continuously backed up** in the background before the eviction ever happens — nothing to lose. |
-| **Recovery Process** | Manual console log-in, search for a new GPU, manual setup. | **100% Autopilot**. Parallel candidate racing rents & verifies a replacement — median 54s in our live tests. |
-| **If your cloud is out of stock** | Failover fails outright — nothing to migrate to. | **Any-to-Any Cross-Cloud Bridge**. Seamless cross-cloud failover across Vast.ai and RunPod in both directions (`Vast.ai ⇄ RunPod`). |
-| **Paying fallback-cloud rates forever** | N/A | **Bidirectional Auto-Failback**. Continuously checks your primary cloud and automatically repatriates the workload the moment lower-cost capacity returns. |
-| **Workload Continuation** | Restart training from epoch 0. | **Auto-Resume**. Script continues running via `nohup` over SSH, from where the backup left off. |
-| **Security Risk** | Requires placing S3/GitHub keys on unstable rented hosts. | **Zero Key Leakage**. All API keys remain on your local machine. |
+| **Workspace State on Node Preemption** | Ephemeral container storage is wiped when the host disconnects. | **Continuously backed up** to your local machine in the background before preemption happens. |
+| **Node Reallocation Handling** | New Salad node starts with a clean slate (`Epoch 0`). | **100% Autopilot (`Salad ➡️ Salad`)**. Detects the replacement Salad node and restores `/workspace` automatically. |
+| **External Cloud Storage Cost** | Requires paying for S3/GCS buckets and egress bandwidth. | **$0 Cloud Storage Overhead**. Syncs directly between your Salad container and your local workstation. |
+| **Workload Continuation** | Manual SSH intervention required. | **Auto-Resume**. Automatically triggers your `--resume-cmd` inside the new Salad container via `nohup`. |
+| **Credential Security** | Placing third-party storage keys inside remote containers. | **Zero Key Leakage**. Your `SALAD_API_KEY` and SSH private keys never leave your local machine. |
 
 ---
 
-## 💎 Core Commercial Features
+## 💎 Core Architecture & Features
 
-* 🛡️ **Continuous Automatic Backup — the real safety net**: Runs high-speed `rsync`/`scp` incremental backups of your workspace to your local machine in the background, the whole time your instance is running — not just triggered after an eviction is detected. This is the feature that actually prevents loss; everything else below just makes recovering from it fast and hands-off.
-* 🏁 **Parallel Candidate Racing**: On eviction, SpotWarp rents several replacement candidates concurrently instead of trying them one at a time — a single slow or dead host no longer adds minutes to your downtime. Live test (Sept 2026, 11 real evictions in batches of 2-5 at once: RTX 3060/3090/4090, A6000, L40S, A100, H100): 11/11 recovered with a byte-identical workspace, median 54s, 10 of 11 within 2 minutes.
-* 🌐 **Cross-Cloud Fallback (Vast.ai ⇄ RunPod)**: If your primary cloud has zero matching candidates at the moment of eviction, SpotWarp automatically bridges to RunPod — spot pricing first, retrying on-demand if RunPod has no spot capacity for that GPU model — so your workload stays protected instead of failing outright.
-* ↩️ **Automatic Cost-Optimizing Failback**: A bridge-cloud replacement is never left running indefinitely at the higher rate. SpotWarp keeps checking your original cloud in the background and migrates the workload back the instant a cheaper matching candidate reappears — verified end-to-end on a single live instance: rented on Vast.ai, evicted, bridged to RunPod, then automatically migrated back to Vast.ai once capacity returned.
-* 💸 **CFO-Approved GPU Savings**: Safely exploit cheap Spot pricing on Vast.ai. SpotWarp gives you the reliability of a Dedicated On-Demand GPU for the price of a Spot instance.
-* ✅ **Real Connectivity Verification**: Replacement hosts are confirmed reachable via an actual SSH handshake before they're trusted — not a proxy signal like a Jupyter API ping that can report false negatives on a perfectly healthy host.
-* 🔒 **Zero-Trust Security (100% Local)**: Your cloud provider API keys (`VAST_API_KEY`, `RUNPOD_API_KEY`) stay on your local PC. Rented containers never see your cloud credentials.
-* 📦 **Zero-Configuration**: No need to install daemons, cron jobs, or synchronization tools inside the remote container.
-* ⚡ **Training Auto-Resumer**: Automatically restarts your training scripts (`--resume-cmd`) in the background of the new container, pointing directly to your restored, backed-up checkpoints.
+* 🛡️ **Same-Cloud Retention (`Salad ➡️ Salad`)**: Built specifically to keep long-running AI workloads inside SaladCloud. When an edge node disconnects, SpotWarp waits for SaladCloud Container Engine (SCE) to allocate a replacement node in your container group, verifies SSH gateway readiness, and restores your workspace automatically.
+* ⚡ **Continuous Delta-Sync Backup**: Runs background `rsync` (or `scp` on Windows) incremental syncs of `/workspace/` every 30 seconds while skipping files modified within the last 10 seconds to prevent torn checkpoint reads.
+* 🔑 **Twelve-Factor Encrypted Secret Support**: Follows SaladCloud best practices by reading `LICENSE_KEY` via encrypted environment variables, with a built-in **Zero-Friction 14-Day SaladCloud Evaluation Mode** (`SALAD-TRIAL`) so developers can deploy from the Salad Portal with zero initial sign-up friction.
+* 🔒 **100% Local Execution**: No third-party proxy servers or cloud controller VMs required.
 
 ---
 
-## 🚀 Quick Start in 1 Minute
+## 🚀 Quick Start with SaladCloud
 
-### 1. Installation (Universal 1-Liner or pip)
+### Step 1. Deploy the Container on SaladCloud
+Use the official recipe specification in [`recipes/salad/salad_recipe.json`](recipes/salad/salad_recipe.json) or deploy `ghcr.io/enplabs/spotwarp:pytorch2.1` on the SaladCloud Portal with SSH enabled and your public key attached.
 
-**Linux / macOS (1-Liner):**
-```bash
-curl -fsSL https://gpu-action.com/install.sh | bash
-```
+### Step 2. Install the Local Guard Daemon
+On your local workstation (Linux, macOS, or Windows):
 
-**Windows PowerShell (1-Liner):**
-```powershell
-irm https://gpu-action.com/install.ps1 | iex
-```
-
-**Standard Python pip (Any OS):**
 ```bash
 pip install --upgrade spotwarp
 ```
 
-### 2. Zero-Config Smart Sniffing or 1-Minute Setup
-SpotWarp automatically detects your existing Vast.ai and RunPod keys from `~/.vast_api_key` or `~/.runpod/config.toml`. Or run the interactive setup wizard:
+Or via universal 1-liner:
 ```bash
+# Linux / macOS
+curl -fsSL https://gpu-action.com/install.sh | bash
+
+# Windows PowerShell
+irm https://gpu-action.com/install.ps1 | iex
+```
+
+### Step 3. Configure & Start Same-Cloud Protection
+```bash
+# Interactive 30-second setup (saves SALAD_API_KEY and SALAD_ORG locally)
 spotwarp init
+
+# Start 24/7 background guard with automatic training resume
+spotwarp start -d --org <YOUR_SALAD_ORG> --container <CONTAINER_NAME> \
+  --resume-cmd "python3 /workspace/train.py --resume"
 ```
 
-### 3. Start the Guard
+### Step 4. Manage the Daemon
 ```bash
-# Option A: Foreground Live Console
-spotwarp start
-
-# Option B: 24/7 Background Daemon (safely close your terminal)
-spotwarp start -d
-```
-
-### 4. Daemon Management
-```bash
-spotwarp status   # Check daemon health & PID
-spotwarp stop     # Gracefully stop the background daemon
+spotwarp status   # Check active Salad container monitoring & PID
+spotwarp stop     # Stop background daemon
 spotwarp config   # View local configuration
 ```
 
-
 ---
 
-## ⚙️ How It Works (The Warping Cycle)
+## ⚙️ How `Salad ➡️ Salad` Recovery Works
 
 ```text
-[Rented GPU Host]                     [Local PC (Client)]                    [New GPU Host]
-  (Active Workload)
-         │                                     │                                    │
-         │ ─── (Sync: rsync/scp delta) ──────> │ (Cached Workspace)                 │
-         │                                     │                                    │
-    [🚨 Evicted!]                              │                                    │
-         ❌ ─── (Detected within 5s) ────────> │                                    │
-                                               │ ─── (Race 4 candidates) ──────────> │
-                                               │      cheapest of the ready pool wins │
-                                               │ ─── (Restore Workspace) ──────────> │
-                                               │ ─── (Nohup Resume Command) ──────> [Run Workload]
-                                                                                      (Continuing!)
-
-  If Vast.ai has zero candidates:
-                                               │ ─── (Bridge to RunPod) ────────────> [Temp Replacement]
-                                               │ ⋯ keeps watching Vast.ai in the background ⋯
-                                               │ ─── (Vast.ai capacity returns) ──> [Migrate back, cheaper]
+[SaladCloud Node A]                   [Your Local Workstation]               [SaladCloud Node B]
+ (Active Training)                       (SpotWarp Daemon)                  (Replacement Allocated)
+         │                                       │                                     │
+         │ ─── (1. Continuous rsync/scp) ──────> │ (Cached /workspace)                 │
+         │                                       │                                     │
+   [🚨 Preempted!]                               │                                     │
+         ❌ ─── (2. Detected via Salad API) ────> │                                     │
+                                                 │ ─── (3. Verify New Node SSH) ─────> │
+                                                 │ ─── (4. Upload /workspace) ───────> │
+                                                 │ ─── (5. Execute --resume-cmd) ────> [Training Resumed!]
 ```
 
-1. **Eviction Detection**: SpotWarp polls the cloud API every 5 seconds. If eviction is detected, it triggers failover immediately.
-2. **Parallel Candidate Racing**: SpotWarp rents up to 4 matching-GPU candidates concurrently and picks the cheapest one that proves SSH-reachable, instead of trying offers one at a time.
-3. **Cross-Cloud Bridge (if needed)**: If no Vast.ai candidate exists at that moment, SpotWarp automatically rents on RunPod instead — spot pricing first, on-demand as a second attempt — so the workload is never left completely unprotected.
-4. **Delta Sync Restoration**: SpotWarp transfers the cached workspace folder to the new container and confirms it's reachable over a real SSH connection.
-5. **Nohup Handover**: SpotWarp connects via SSH to trigger the `--resume-cmd` in the background.
-6. **Auto-Failback**: If step 3 was needed, SpotWarp keeps quietly re-checking Vast.ai for that GPU model. The moment a candidate reappears, it migrates the workload back automatically and releases the bridge-cloud host — no manual intervention, no forgotten expensive instance left running.
+1. **Continuous Backup**: SpotWarp syncs `/workspace/` from your active Salad container (`ssh_ip:ssh_port`) to `./backups/<container_name>/`.
+2. **Preemption Detection**: SpotWarp polls the SaladCloud Container Engine API every 5 seconds.
+3. **Replacement Verification**: As soon as SaladCloud allocates a new running instance for your container group, SpotWarp verifies SSH connectivity through the Salad gateway.
+4. **Zero-Loss Restoration & Auto-Resume**: Cached checkpoints are uploaded to `/workspace/` on the new Salad node, and your `--resume-cmd` is launched automatically in the background.
 
 ---
 
-## 📄 License & Security Audits
-SpotWarp is distributed under the MIT License. The code executes 100% locally in user space on your local computer, ensuring full transparency and compliance.
+## 📄 License
+Distributed under the MIT License. All client daemon logic executes locally in user space.

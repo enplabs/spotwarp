@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 🚀 SpotWarp Official Universal Installer (Linux / macOS)
+# 🚀 SpotWarp Official Universal Installer for SaladCloud (Linux / macOS)
 # ==============================================================================
-# Fast, zero-dependency standalone binary installer with resilient pip fallback.
-#
 # Usage:
 #   curl -fsSL https://gpu-action.com/install.sh | bash
 # ==============================================================================
@@ -22,13 +20,12 @@ echo "  ___) | |_) | (_) | |_ \ V  V / (_| | |  | |_) |  "
 echo " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   "
 echo "       |_|                                |_|      "
 echo -e "${RESET}"
-echo -e "${BOLD}SpotWarp: Spot GPU Continuous Backup & Cross-Cloud Failover Daemon${RESET}"
-echo -e "Version: ${GREEN}v3.4.3${RESET}\n"
+echo -e "${BOLD}SpotWarp: Zero-Loss Checkpoint Backup & Same-Cloud Failover for SaladCloud${RESET}"
+echo -e "Version: ${GREEN}v3.5.0${RESET}\n"
 
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-# 1. Detect OS and Hardware Architecture
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 
@@ -43,11 +40,9 @@ fi
 
 BINARY_INSTALLED=0
 
-# 2. Attempt Standalone Binary Download (C-Compiled, Python-Free, Fast)
 if [ -n "$BIN_TARGET" ]; then
     RELEASE_URL="https://github.com/enplabs/spotwarp/releases/latest/download/${BIN_TARGET}"
     echo -e "${CYAN}[*] Downloading pre-compiled standalone binary (${BIN_TARGET})...${RESET}"
-    
     TMP_BIN="/tmp/${BIN_TARGET}_$$"
     if curl -fsSL --connect-timeout 8 --retry 2 "$RELEASE_URL" -o "$TMP_BIN" 2>/dev/null; then
         chmod +x "$TMP_BIN"
@@ -62,51 +57,20 @@ if [ -n "$BIN_TARGET" ]; then
     fi
 fi
 
-# 3. Resilient Fallback to Python Multi-Tier Installation if binary unavailable
 if [ $BINARY_INSTALLED -eq 0 ]; then
-    echo -e "${YELLOW}[*] Standalone binary skipped or unavailable for current platform. Proceeding with pip...${RESET}"
+    echo -e "${YELLOW}[*] Proceeding with Python pip installation...${RESET}"
     if ! command -v python3 &> /dev/null; then
         echo -e "${YELLOW}[!] Python 3 not found. Please install Python 3.8+ to proceed.${RESET}"
         exit 1
     fi
 
     INSTALL_SUCCESS=0
-    # Tier 1: Standard pip install
-    if python3 -m pip install --upgrade --quiet "spotwarp>=3.4.3" 2>/dev/null; then
+    if python3 -m pip install --upgrade --quiet "spotwarp" 2>/dev/null; then
         INSTALL_SUCCESS=1
-    fi
-
-    # Tier 2: PEP 668 bypass (--break-system-packages)
-    if [ $INSTALL_SUCCESS -eq 0 ]; then
-        if python3 -m pip install --upgrade --break-system-packages --quiet "spotwarp>=3.4.3" 2>/dev/null; then
-            INSTALL_SUCCESS=1
-        fi
-    fi
-
-    # Tier 3: User mode
-    if [ $INSTALL_SUCCESS -eq 0 ]; then
-        if python3 -m pip install --user --upgrade --break-system-packages --quiet "spotwarp>=3.4.3" 2>/dev/null; then
-            INSTALL_SUCCESS=1
-        fi
-    fi
-
-    # Tier 4: pipx
-    if [ $INSTALL_SUCCESS -eq 0 ] && command -v pipx &> /dev/null; then
-        if pipx install --upgrade spotwarp 2>/dev/null || pipx install spotwarp 2>/dev/null; then
-            INSTALL_SUCCESS=1
-        fi
-    fi
-
-    # Tier 5: Isolated venv
-    if [ $INSTALL_SUCCESS -eq 0 ]; then
-        echo -e "${YELLOW}[*] Setting up isolated venv at ~/.spotwarp/venv...${RESET}"
-        mkdir -p "$HOME/.spotwarp"
-        if python3 -m venv "$HOME/.spotwarp/venv" 2>/dev/null; then
-            if "$HOME/.spotwarp/venv/bin/pip" install --upgrade --quiet "spotwarp>=3.4.3" 2>/dev/null; then
-                ln -sf "$HOME/.spotwarp/venv/bin/spotwarp" "$INSTALL_DIR/spotwarp"
-                INSTALL_SUCCESS=1
-            fi
-        fi
+    elif python3 -m pip install --upgrade --break-system-packages --quiet "spotwarp" 2>/dev/null; then
+        INSTALL_SUCCESS=1
+    elif python3 -m pip install --user --upgrade --break-system-packages --quiet "spotwarp" 2>/dev/null; then
+        INSTALL_SUCCESS=1
     fi
 
     if [ $INSTALL_SUCCESS -eq 0 ]; then
@@ -115,7 +79,6 @@ if [ $BINARY_INSTALLED -eq 0 ]; then
     fi
 fi
 
-# 4. PATH Configuration (Idempotent)
 case ":$PATH:" in
     *":$INSTALL_DIR:"*) ;;
     *)
@@ -130,36 +93,11 @@ case ":$PATH:" in
         ;;
 esac
 
-# 5. Smart Sniffing for Existing Cloud Keys
-SNIFFED_VAST=""
-if [ -f "$HOME/.vast_api_key" ]; then
-    SNIFFED_VAST="$HOME/.vast_api_key"
-elif [ -n "$VAST_API_KEY" ]; then
-    SNIFFED_VAST="env:VAST_API_KEY"
-fi
-
-SNIFFED_RUNPOD=""
-if [ -n "$RUNPOD_API_KEY" ]; then
-    SNIFFED_RUNPOD="env:RUNPOD_API_KEY"
-elif [ -f "$HOME/.runpod/config.toml" ]; then
-    SNIFFED_RUNPOD="$HOME/.runpod/config.toml"
-elif [ -f "$HOME/.runpod_api_key" ]; then
-    SNIFFED_RUNPOD="$HOME/.runpod_api_key"
-fi
-
 echo -e "\n${BOLD}================================================================${RESET}"
-echo -e "${GREEN}[+] SpotWarp v3.4.3 is READY!${RESET}"
-if [ -n "$SNIFFED_VAST" ]; then
-    echo -e "${GREEN}    ? Auto-detected Vast.ai API Key (${SNIFFED_VAST})${RESET}"
-fi
-if [ -n "$SNIFFED_RUNPOD" ]; then
-    echo -e "${GREEN}    ? Auto-detected RunPod API Key (${SNIFFED_RUNPOD})${RESET}"
-fi
-
+echo -e "${GREEN}[+] SpotWarp v3.5.0 (SaladCloud Edition) is READY!${RESET}"
 echo -e "\n${BOLD}Next Steps:${RESET}"
-echo -e "  1. Complete setup with your license key:"
+echo -e "  1. Configure your SaladCloud API key & Organization:"
 echo -e "     ${CYAN}${BOLD}spotwarp init${RESET}"
-echo -e "     (Or start directly: ${CYAN}spotwarp start --license-key <YOUR_KEY> -d${RESET})"
-echo -e "  2. Don't have a license key? Get one at:"
-echo -e "     ${CYAN}https://gpu-action.com/pricing${RESET}"
+echo -e "  2. Start protecting your SaladCloud containers in the background:"
+echo -e "     ${CYAN}${BOLD}spotwarp start -d${RESET}"
 echo -e "${BOLD}================================================================${RESET}\n"

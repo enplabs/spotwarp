@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-SpotWarp CLI: Spot-Instance Failover Guard Agent
---------------------------------------------------
-100% Local Execution - Your VAST_API_KEY and RUNPOD_API_KEY stay 100% local.
-Pings local/remote Vast.ai instances and automatically triggers zero-downtime 
-failover upon eviction, with smart data sync and cross-cloud RunPod fallback.
+SpotWarp CLI: Zero-Loss Fault-Tolerance & Checkpoint Failover Daemon for SaladCloud
+-----------------------------------------------------------------------------------
+100% Local Execution - Your SALAD_API_KEY and SSH keys stay 100% on your local machine.
+Continuously backs up /workspace checkpoints from active SaladCloud Container Engine (SCE)
+nodes to your local PC and automatically restores state onto the replacement Salad node
+upon preemption or reallocation (Same-Cloud Salad -> Salad recovery).
 
 Usage:
   pip install spotwarp
-  spotwarp start --license-key YOUR_KEY --runpod-api-key RP_KEY --resume-cmd "python /workspace/train.py --resume"
+  spotwarp init
+  spotwarp start -d --org YOUR_ORG --resume-cmd "python3 /workspace/train.py --resume"
 """
 
 import os
@@ -22,20 +24,14 @@ import threading
 import shutil
 import tempfile
 
-# Standardize terminal encoding to UTF-8 on Windows.
-#
-# write_through=True alone is NOT enough (live-testing verified 2026-08-06):
-# it only stops the TextIOWrapper's own text-layer buffering. Wrapping the
-# existing sys.stdout.buffer still leaves that underlying BufferedWriter's
-# binary-layer buffering in place, so output silently sat unflushed for
-# minutes at a time when redirected to a file — a background daemon that
-# was working fine looked hung. Opening the raw fd directly with
-# buffering=0 removes the buffered layer entirely, confirmed live to flush
-# each line immediately even mid-sleep in a still-running process.
+# Standardize terminal encoding to UTF-8 on Windows with zero buffering
 if sys.platform == 'win32':
     import io
-    sys.stdout = io.TextIOWrapper(open(sys.stdout.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
-    sys.stderr = io.TextIOWrapper(open(sys.stderr.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
+    try:
+        sys.stdout = io.TextIOWrapper(open(sys.stdout.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
+        sys.stderr = io.TextIOWrapper(open(sys.stderr.fileno(), 'wb', buffering=0), encoding='utf-8', errors='replace', write_through=True)
+    except Exception:
+        pass
 
 # Hardened SSL certificate resolution for C-compiled binary & frozen environments
 try:
@@ -47,16 +43,21 @@ try:
 except ImportError:
     pass
 
+VERSION = "3.5.0"
 CENTRAL_SERVER = "https://gpu-action.com"
 LICENSE_VERIFY_ENDPOINT = f"{CENTRAL_SERVER}/api/v1/verify_license"
-TEMPLATE_HASH_ID = "5d762fad90ee6aa0f8636464e142ad29"
+SALAD_API_BASE = "https://api.salad.com/api/public"
+
+CONFIG_DIR = os.path.expanduser("~/.spotwarp")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+TRIAL_FILE = os.path.join(CONFIG_DIR, "salad_trial.json")
+PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
+LOG_FILE = os.path.join(CONFIG_DIR, "spotwarp_daemon.log")
+TRIAL_DAYS = 14
+
 
 def to_rsync_path(path: str) -> str:
-    """Converts a native path to a form safe to pass as a purely-local
-    rsync/scp argument. On Windows, a bare drive letter ('C:\\...') is
-    otherwise parsed as a remote host:path spec, which fails with
-    "source and destination cannot both be remote" even though both
-    sides are actually local."""
+    """Converts a native path to a form safe to pass as a local rsync/scp argument."""
     if sys.platform == 'win32':
         abspath = os.path.abspath(path).replace("\\", "/")
         if len(abspath) >= 2 and abspath[1] == ':':
@@ -65,163 +66,154 @@ def to_rsync_path(path: str) -> str:
     return path
 
 
-def _is_private_ip(ip: str) -> bool:
-    """RFC1918 + loopback/link-local check. Live-testing 2026-08-07 hit a real
-    Vast.ai host (RTX 4090, host 348505) whose 'public_ipaddr' field was
-    192.168.1.27 — a LAN address, not actually reachable from the internet.
-    Trusting it blindly meant restore/SSH-verify failed for reasons that had
-    nothing to do with the instance's health, on a host we'd already
-    committed to as the chosen replacement."""
-    try:
-        parts = [int(p) for p in ip.split('.')]
-        if len(parts) != 4:
-            return False
-        a, b = parts[0], parts[1]
-        return (a == 10 or a == 127
-                or (a == 172 and 16 <= b <= 31)
-                or (a == 192 and b == 168)
-                or (a == 169 and b == 254))
-    except (ValueError, AttributeError):
-        return False
+def clean_ssh_output(raw_stdout: str) -> str:
+    """Filters out the SaladCloud SSH gateway 'Connecting to container...' banner."""
+    if not raw_stdout:
+        return ""
+    lines = raw_stdout.splitlines()
+    filtered = [l for l in lines if not l.startswith("Connecting to container")]
+    return "\n".join(filtered).strip()
 
 
-def sniff_local_api_keys():
-    """Automatically sniffs existing Vast.ai and RunPod API keys from user's
-    local machine without requiring manual copy-pasting (Zero-Config mode)."""
-    vast_key = os.getenv("VAST_API_KEY", "")
-    runpod_key = os.getenv("RUNPOD_API_KEY", "")
+def sniff_local_salad_credentials():
+    """Automatically detects existing SaladCloud API key and organization from local environment."""
+    salad_key = os.getenv("SALAD_API_KEY", "").strip()
+    salad_org = os.getenv("SALAD_ORG", "").strip()
+    salad_project = os.getenv("SALAD_PROJECT", "").strip() or "default"
 
-    # 1. Check ~/.vast_api_key (Official Vast CLI config file)
-    if not vast_key:
-        vast_file = os.path.expanduser("~/.vast_api_key")
-        if os.path.exists(vast_file):
+    if not salad_key:
+        key_file = os.path.expanduser("~/.salad_api_key")
+        if os.path.exists(key_file):
             try:
-                with open(vast_file, "r", encoding="utf-8") as f:
+                with open(key_file, "r", encoding="utf-8") as f:
                     c = f.read().strip()
-                    if c and len(c) >= 20:
-                        vast_key = c
+                    if c and len(c) >= 16:
+                        salad_key = c
             except Exception:
                 pass
 
-    # 2. Check ~/.runpod/config.toml (Official RunPod CLI config file)
-    if not runpod_key:
-        rp_file = os.path.expanduser("~/.runpod/config.toml")
-        if os.path.exists(rp_file):
+    if not salad_key or not salad_org:
+        cfg_file = os.path.expanduser("~/.salad/config.json")
+        if os.path.exists(cfg_file):
             try:
-                with open(rp_file, "r", encoding="utf-8") as f:
-                    for line in f:
-                        if "api_key" in line and "=" in line:
-                            val = line.split("=")[1].strip().strip("\"'")
-                            if val.startswith("rpa_"):
-                                runpod_key = val
-                                break
+                with open(cfg_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if not salad_key and data.get("api_key"):
+                        salad_key = str(data["api_key"]).strip()
+                    if not salad_org and data.get("organization"):
+                        salad_org = str(data["organization"]).strip()
+                    if data.get("project"):
+                        salad_project = str(data["project"]).strip()
             except Exception:
                 pass
 
-    return vast_key, runpod_key
+    return salad_key, salad_org, salad_project
 
 
-def get_ssh_endpoint(inst: dict):
-    """Prefer a direct public_ipaddr:port connection over Vast's ssh#.vast.ai
-    proxy. Observed in practice: the proxy route can fail at the SSH kex
-    stage ("Connection closed by remote host") even while the instance is
-    healthy and directly reachable on its mapped port 22/tcp. But a
-    public_ipaddr that's actually a private-range address is worse than the
-    proxy, not better — it's not routable at all — so fall back to the proxy
-    route in that case instead of trusting it."""
-    try:
-        ssh_mapping = (inst.get('ports') or {}).get('22/tcp')
-        public_ip = inst.get('public_ipaddr')
-        if ssh_mapping and public_ip and not _is_private_ip(public_ip):
-            host_port = ssh_mapping[0].get('HostPort')
-            if host_port:
-                return public_ip, int(host_port)
-    except Exception:
-        pass
-    return inst.get('ssh_host'), inst.get('ssh_port')
+def check_or_init_trial() -> tuple:
+    """Zero-Friction 14-Day SaladCloud Evaluation Mode when no paid key is provided yet."""
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    now = time.time()
+    start_ts = now
+    if os.path.exists(TRIAL_FILE):
+        try:
+            with open(TRIAL_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                start_ts = float(data.get("start_ts", now))
+        except Exception:
+            start_ts = now
+    else:
+        try:
+            with open(TRIAL_FILE, "w", encoding="utf-8") as f:
+                json.dump({"start_ts": start_ts, "created_at": time.strftime("%Y-%m-%d %H:%M:%S")}, f)
+        except Exception:
+            pass
 
-# Replacement image when the evicted instance's own launch config is unknown.
-# The previous default (pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime, ~3.4 GB)
-# is not pre-pulled on most Vast hosts any more: a 2026-09-28 end-to-end test
-# raced 4 RTX 3090 replacements and all 4 were still pulling it when the boot
-# timeout hit, and a separate probe was still pulling at 301s. Vast's own
-# vastai/pytorch image is what their recommended PyTorch template runs, so it
-# is widely cached — template instances on it booted in 30-60s the same day.
-DEFAULT_REPLACEMENT_IMAGE = "vastai/pytorch:cuda-12.8.1-auto"
-DEFAULT_REPLACEMENT_MIN_CUDA = 12.4  # the vastai/pytorch "auto" tag needs a 12.4+ driver
+    elapsed_days = (now - start_ts) / 86400.0
+    remaining_days = max(0.0, TRIAL_DAYS - elapsed_days)
+    return remaining_days > 0, remaining_days
 
-class GpuActionGuard:
-    def __init__(self, license_key: str, vast_api_key: str = None, runpod_api_key: str = None, resume_cmd: str = None, backup_dir: str = None, provider: str = "auto", failover_policy: str = "same-cloud-first"):
-        sniffed_v, sniffed_r = sniff_local_api_keys()
-        self.license_key = license_key
-        self.vast_api_key = vast_api_key or os.getenv("VAST_API_KEY", "") or sniffed_v
-        self.runpod_api_key = runpod_api_key or os.getenv("RUNPOD_API_KEY", "") or sniffed_r
 
+class SaladFailoverGuard:
+    """100% Local Same-Cloud (Salad -> Salad) Checkpoint Backup & Failover Engine."""
+
+    def __init__(
+        self,
+        license_key: str = None,
+        salad_api_key: str = None,
+        salad_org: str = None,
+        salad_project: str = "default",
+        salad_container: str = None,
+        ssh_key_path: str = None,
+        resume_cmd: str = None,
+        backup_dir: str = None,
+    ):
+        sniffed_key, sniffed_org, sniffed_proj = sniff_local_salad_credentials()
+        self.license_key = (license_key or "").strip()
+        self.salad_api_key = (salad_api_key or sniffed_key or "").strip()
+        self.salad_org = (salad_org or sniffed_org or "").strip()
+        self.salad_project = (salad_project or sniffed_proj or "default").strip()
+        self.salad_container = (salad_container or "").strip()
+        self.ssh_key_path = ssh_key_path or os.path.expanduser("~/.ssh/id_ed25519")
         self.resume_cmd = resume_cmd
-        self.backup_root = os.path.abspath(backup_dir or os.getenv("SPOTWARP_BACKUP_DIR", "") or os.path.join(".", "backups"))
-        self.headers = {"Accept": "application/json", "Authorization": f"Bearer {self.vast_api_key}"}
+        self.backup_root = os.path.abspath(
+            backup_dir or os.getenv("SPOTWARP_BACKUP_DIR", "") or os.path.join(".", "backups")
+        )
+
+        self.headers = {
+            "Salad-Api-Key": self.salad_api_key,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
         self.is_valid_license = False
-        self.tracked_instances = {}  # maps instance_id -> (host, ssh_port, host_id, gpu_name)
-        # vast instance_id -> how it was launched (template / image / disk), so a
-        # replacement comes up in the same environment the workload was running in.
-        self.launch_specs = {}
-        # Evictions are handled in parallel threads (one per evicted instance),
-        # so two instances lost at the same moment don't queue behind each other.
+        self.plan = None
+        # Maps container_group_name -> {"instance_id", "machine_id", "host", "port"}
+        self.tracked_containers = {}
         self.failover_lock = threading.Lock()
         self.inflight_failovers = set()
         self.backup_threads = {}
         self.stop_events = {}
-        # Instances currently parked on RunPod because Vast had zero
-        # candidates at failover time — RunPod is materially more expensive
-        # than Vast spot, so these are watched separately and migrated back
-        # the moment Vast has the original GPU model available again. Maps
-        # runpod_instance_id -> {"host", "port", "match_token", "runpod_pod_id"}.
-        self.runpod_parked = {}
-        self.runpod_last_check = {}  # throttles how often each parked instance re-queries Vast
-        self.provider = provider or "auto"
-        self.failover_policy = failover_policy or "same-cloud-first"
-        self.vast_parked = {}
-        self.vast_last_check = {}
-        self.plan = None  # set by verify_license(); informational only — single flat pricing tier, nothing is feature-gated by plan
-        
-        # Smart detection of rsync local presence.
-        #
-        # On Windows this was previously auto-installing a portable cygwin
-        # rsync build (install_rsync_windows()) and trusting it whenever the
-        # binary was present. In practice that build has two distinct real
-        # failure modes when actually exercised against a live remote host:
-        # (1) Windows drive-letter paths ("C:\...") get misparsed as a
-        #     remote host:path spec ("source and destination cannot both be
-        #     remote") unless converted to /cygdrive/... form (see
-        #     to_rsync_path()), and even then —
-        # (2) spawning cygwin's ssh.exe as a grandchild of a non-cygwin
-        #     parent process fails during its own fd setup ("dup() in/out/
-        #     err failed"), closing the connection before any data
-        #     transfers. This isn't something we can reliably patch around
-        #     from here, so Windows now always uses scp (bundled with
-        #     Windows' native OpenSSH client, which has none of these
-        #     issues) instead of attempting rsync at all.
+        self.total_failovers = 0
         self.use_rsync = sys.platform != 'win32' and shutil.which("rsync") is not None
 
+    def _ssh_base_args(self, port: int) -> list:
+        null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
+        args = [
+            "-p", str(port),
+            "-o", "StrictHostKeyChecking=no",
+            "-o", f"UserKnownHostsFile={null_file}",
+            "-o", "ConnectTimeout=10",
+        ]
+        if self.ssh_key_path and os.path.exists(self.ssh_key_path):
+            args.extend(["-i", self.ssh_key_path])
+        return args
+
     def verify_license(self) -> bool:
-        """Verifies active subscription with central server. Strict paid-only enforcement."""
-        if not self.license_key or not str(self.license_key).strip() or self.license_key == "TRIAL_LOCAL_PASS":
-            print("[SpotWarp Guard] Error: No valid license key provided.")
-            print("[SpotWarp Guard] SpotWarp requires an active subscription. Get your key at: https://gpu-action.com/pricing")
-            return False
+        """Verifies active subscription or enables Zero-Friction 14-Day SaladCloud Evaluation Mode."""
+        if not self.license_key or self.license_key.upper() in ("SALAD-TRIAL", "SALAD-FREE-TRIAL", "TRIAL"):
+            ok, rem_days = check_or_init_trial()
+            if ok:
+                self.is_valid_license = True
+                self.plan = f"SaladCloud 14-Day Evaluation Mode ({rem_days:.1f} days remaining)"
+                print(f"[SpotWarp Guard] Zero-Friction Onboarding Active: {self.plan}")
+                return True
+            else:
+                print("[SpotWarp Guard] Your 14-day SaladCloud evaluation period has ended.")
+                print("[SpotWarp Guard] Upgrade to a full license key at: https://gpu-action.com/pricing")
+                return False
 
         try:
             r = requests.post(
                 LICENSE_VERIFY_ENDPOINT,
                 json={"license_key": self.license_key},
-                headers={"User-Agent": f"SpotWarp-Guard/{VERSION}"},
-                timeout=10
+                headers={"User-Agent": f"SpotWarp-SaladGuard/{VERSION}"},
+                timeout=10,
             )
             if r.status_code == 200:
                 data = r.json()
                 if data.get("valid"):
                     self.is_valid_license = True
-                    self.plan = data.get('plan') or "SpotWarp Pass ($49/mo)"
+                    self.plan = data.get("plan") or "SpotWarp Pro Pass"
                     print(f"[SpotWarp Guard] License Verified: Active ({self.plan})")
                     return True
                 else:
@@ -229,110 +221,91 @@ class GpuActionGuard:
                     print("[SpotWarp Guard] Please verify your subscription at https://gpu-action.com/dashboard")
                     return False
             else:
-                print(f"[SpotWarp Guard] License verification endpoint returned status {r.status_code}.")
-                print("[SpotWarp Guard] Unable to verify subscription with central server.")
+                print(f"[SpotWarp Guard] License server returned HTTP {r.status_code}.")
                 return False
         except Exception as e:
-            print(f"[SpotWarp Guard] License verification connection failed: {e}")
-            print(f"[SpotWarp Guard] Please check your network connection to {CENTRAL_SERVER}")
+            print(f"[SpotWarp Guard] License check connection warning: {e}")
             return False
 
-    def check_vast_status(self) -> dict:
-        """Pings Vast.ai API using the user's LOCAL API key."""
-        if not self.vast_api_key:
-            return {"status": "error", "message": "VAST_API_KEY environment variable/argument not set."}
-        
+    def list_container_groups(self) -> list:
+        """Lists target container groups in the configured SaladCloud organization & project."""
+        if self.salad_container:
+            return [self.salad_container]
+        if not self.salad_api_key or not self.salad_org:
+            return []
+        url = f"{SALAD_API_BASE}/organizations/{self.salad_org}/projects/{self.salad_project}/containers"
         try:
-            r = requests.get("https://console.vast.ai/api/v1/instances/", headers=self.headers, timeout=10)
+            r = requests.get(url, headers=self.headers, timeout=10)
             if r.status_code == 200:
-                instances = r.json().get('instances', [])
-                active_count = sum(1 for i in instances if i.get('actual_status') == 'running')
-                return {"status": "ok", "active_instances": active_count, "instances": instances}
-            else:
-                return {"status": "error", "message": f"Vast API returned code {r.status_code}: {r.text}"}
-        except Exception as e:
-            return {"status": "warning", "message": str(e)}
+                items = r.json().get("items", [])
+                return [item.get("name") for item in items if item.get("name")]
+        except Exception:
+            pass
+        return []
 
-    def check_runpod_status(self) -> dict:
-        """Pings RunPod API using the user's LOCAL API key."""
-        if not self.runpod_api_key:
-            return {"status": "error", "message": "RUNPOD_API_KEY not set."}
+    def get_container_instances(self, container_name: str) -> list:
+        """Fetches instances for a specific SaladCloud container group."""
+        if not self.salad_api_key or not self.salad_org:
+            return []
+        url = (
+            f"{SALAD_API_BASE}/organizations/{self.salad_org}"
+            f"/projects/{self.salad_project}/containers/{container_name}/instances"
+        )
         try:
-            sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-            from runpod_connector import RunPodGPUConnector
-            rp_client = RunPodGPUConnector(api_key=self.runpod_api_key)
-            pods = rp_client.get_user_pods()
-            active_count = sum(1 for p in pods if p.get('is_running'))
-            return {"status": "ok", "active_pods": active_count, "pods": pods}
-        except Exception as e:
-            return {"status": "warning", "message": str(e)}
+            r = requests.get(url, headers=self.headers, timeout=10)
+            if r.status_code == 200:
+                return r.json().get("instances", [])
+        except Exception:
+            pass
+        return []
 
+    def trigger_reallocate(self, container_name: str, instance_id: str) -> bool:
+        """Requests immediate SaladCloud node reallocation when an instance becomes unhealthy."""
+        url = (
+            f"{SALAD_API_BASE}/organizations/{self.salad_org}"
+            f"/projects/{self.salad_project}/containers/{container_name}"
+            f"/instances/{instance_id}/reallocate"
+        )
+        try:
+            r = requests.post(url, headers=self.headers, timeout=10)
+            return r.status_code in (200, 202, 204)
+        except Exception:
+            return False
 
-    def start_backup_sync(self, inst_id, host, port):
-        """Spawns background loop to sync files from remote container to local PC."""
-        if inst_id in self.backup_threads:
+    def start_backup_sync(self, container_name: str, inst_id: str, host: str, port: int):
+        """Spawns background loop to sync /workspace checkpoints from Salad node to local PC."""
+        if container_name in self.backup_threads:
             return
 
         stop_event = threading.Event()
-        self.stop_events[inst_id] = stop_event
-
-        # Files modified more recently than this are assumed to still be
-        # mid-write on the source and are skipped for this cycle, to avoid
-        # backing up a torn/incomplete checkpoint. They'll be picked up once
-        # they've settled on a later cycle.
+        self.stop_events[container_name] = stop_event
         SETTLE_SECONDS = 10
-        # Large checkpoints can legitimately take longer than one 30s cycle
-        # to transfer; a too-short timeout meant the single biggest file in
-        # a workspace could silently never get backed up.
         SYNC_TIMEOUT = 600
 
-        def log_backup_event(message, quiet=False):
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            line = f"[{timestamp}] {message}"
-            if not quiet:
-                print(f"\n[Backup] {message}")
-            try:
-                log_path = os.path.join(self.backup_root, str(inst_id), "sync_errors.log")
-                os.makedirs(os.path.dirname(log_path), exist_ok=True)
-                with open(log_path, "a", encoding="utf-8") as f:
-                    f.write(line + "\n")
-            except Exception:
-                pass
-
         def sync_worker():
-            local_backup_dir = os.path.join(self.backup_root, str(inst_id))
+            local_backup_dir = os.path.join(self.backup_root, container_name)
             os.makedirs(local_backup_dir, exist_ok=True)
-
-            if self.use_rsync:
-                print(f"\n[Backup] Started background high-speed delta 'rsync' for instance {inst_id} to {local_backup_dir}")
-            else:
-                print(f"\n[Backup] Started background backup sync ('scp' fallback) for instance {inst_id} to {local_backup_dir}")
-
             null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-            ssh_opts = f"ssh -p {port} -o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}"
-            consecutive_failures = 0
+            key_opt = f"-i {self.ssh_key_path} " if (self.ssh_key_path and os.path.exists(self.ssh_key_path)) else ""
+            ssh_opts = f"ssh -p {port} {key_opt}-o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}"
+
+            mode_label = "rsync (delta)" if self.use_rsync else "scp"
+            print(f"\n[Backup] Started continuous {mode_label} sync for Salad container '{container_name}' ({inst_id[:8]}) -> {local_backup_dir}")
 
             while not stop_event.is_set():
                 try:
                     exclude_file = None
                     if self.use_rsync:
-                        # Ask the remote host which files are "fresh" (recently
-                        # modified) and exclude them from this pass, so we don't
-                        # copy a file mid-write. Best-effort: if this fails
-                        # (e.g. minimal busybox find on the container), fall
-                        # back to syncing everything.
                         try:
-                            find_cmd = [
-                                "ssh", "-p", str(port),
-                                "-o", "StrictHostKeyChecking=no",
-                                "-o", f"UserKnownHostsFile={null_file}",
+                            find_cmd = ["ssh"] + self._ssh_base_args(port) + [
                                 f"root@{host}",
-                                f"find /workspace/ -type f -newermt '-{SETTLE_SECONDS} seconds' 2>/dev/null"
+                                f"bash -c 'find /workspace/ -type f -newermt \"-{SETTLE_SECONDS} seconds\" 2>/dev/null'"
                             ]
                             fresh = subprocess.run(find_cmd, capture_output=True, text=True, timeout=20)
+                            cleaned = clean_ssh_output(fresh.stdout)
                             fresh_paths = [
                                 p.strip()[len("/workspace/"):]
-                                for p in fresh.stdout.splitlines()
+                                for p in cleaned.splitlines()
                                 if p.strip().startswith("/workspace/")
                             ]
                             if fresh_paths:
@@ -348,1065 +321,277 @@ class GpuActionGuard:
                         cmd += [
                             "-e", ssh_opts,
                             f"root@{host}:/workspace/",
-                            to_rsync_path(local_backup_dir) + "/"
+                            to_rsync_path(local_backup_dir) + "/",
                         ]
                     else:
-                        cmd = [
-                            "scp",
-                            "-o", "StrictHostKeyChecking=no",
-                            "-o", "UserKnownHostsFile=NUL" if sys.platform == 'win32' else "UserKnownHostsFile=/dev/null",
-                            "-P", str(port),
-                            "-r",
-                            f"root@{host}:/workspace/.",
-                            local_backup_dir  # scp (Win32 OpenSSH) wants a native path, not a cygdrive one
-                        ]
+                        scp_args = ["scp", "-P", str(port), "-r", "-o", "StrictHostKeyChecking=no", "-o", f"UserKnownHostsFile={null_file}"]
+                        if self.ssh_key_path and os.path.exists(self.ssh_key_path):
+                            scp_args.extend(["-i", self.ssh_key_path])
+                        scp_args.extend([f"root@{host}:/workspace/.", local_backup_dir])
+                        cmd = scp_args
 
-                    try:
-                        result = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=SYNC_TIMEOUT)
-                        if result.returncode == 0:
-                            consecutive_failures = 0
-                        else:
-                            consecutive_failures += 1
-                            log_backup_event(
-                                f"sync attempt failed (exit {result.returncode}): "
-                                f"{result.stderr.decode(errors='replace')[:300]}",
-                                quiet=(consecutive_failures < 3)
-                            )
-                    except subprocess.TimeoutExpired:
-                        consecutive_failures += 1
-                        log_backup_event(
-                            f"sync attempt exceeded {SYNC_TIMEOUT}s timeout — will retry next cycle",
-                            quiet=(consecutive_failures < 3)
-                        )
-                    finally:
-                        if exclude_file and os.path.exists(exclude_file):
+                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=SYNC_TIMEOUT)
+                    if exclude_file and os.path.exists(exclude_file):
+                        try:
                             os.remove(exclude_file)
-
-                    if consecutive_failures in (3, 10) or (consecutive_failures > 10 and consecutive_failures % 20 == 0):
-                        log_backup_event(
-                            f"WARNING: {consecutive_failures} consecutive backup sync failures for instance {inst_id} — "
-                            f"this instance may not actually be protected right now."
-                        )
-                except Exception as e:
-                    log_backup_event(f"unexpected sync error: {e}")
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
                 for _ in range(30):
                     if stop_event.is_set():
                         break
                     time.sleep(1)
-            print(f"\n[Backup] Stopped background sync for instance {inst_id}")
 
-        t = threading.Thread(target=sync_worker, daemon=True)
-        self.backup_threads[inst_id] = t
+        t = threading.Thread(target=sync_worker, daemon=True, name=f"backup-{container_name}")
+        self.backup_threads[container_name] = t
         t.start()
 
-    def stop_backup_sync(self, inst_id):
-        """Signals and stops the background sync worker thread."""
-        if inst_id in self.stop_events:
-            self.stop_events[inst_id].set()
-            self.backup_threads[inst_id].join(timeout=5)
-            del self.stop_events[inst_id]
-            del self.backup_threads[inst_id]
+    def stop_backup_sync(self, container_name: str):
+        if container_name in self.stop_events:
+            self.stop_events[container_name].set()
+            if container_name in self.backup_threads:
+                self.backup_threads[container_name].join(timeout=5)
+                del self.backup_threads[container_name]
+            del self.stop_events[container_name]
 
-    def restore_backup(self, old_inst_id, new_inst_id, new_host, new_port) -> bool:
-        """Restores backed-up workspace files to replacement container."""
-        old_backup_dir = os.path.join(self.backup_root, str(old_inst_id))
-        if not os.path.exists(old_backup_dir) or not os.listdir(old_backup_dir):
-            print(f"[Restore] No local files found for old instance {old_inst_id}. Skipping migration.")
+    def verify_ssh_ready(self, host: str, port: int, max_attempts: int = 20) -> bool:
+        """Waits until the replacement Salad container SSH gateway responds."""
+        for attempt in range(1, max_attempts + 1):
+            try:
+                cmd = ["ssh"] + self._ssh_base_args(port) + [f"root@{host}", "bash -c 'echo READY_OK'"]
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                if "READY_OK" in clean_ssh_output(r.stdout):
+                    print(f"[+] SSH gateway ready on replacement Salad node {host}:{port} (attempt {attempt})")
+                    return True
+            except Exception:
+                pass
+            time.sleep(3)
+        return False
+
+    def restore_backup(self, container_name: str, new_host: str, new_port: int) -> bool:
+        """Restores locally backed-up /workspace files to the new SaladCloud container."""
+        local_backup_dir = os.path.join(self.backup_root, container_name)
+        if not os.path.exists(local_backup_dir) or not os.listdir(local_backup_dir):
+            print(f"[Restore] No local cached files for '{container_name}' yet. Skipping upload.")
             return True
-            
-        null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
 
-        # A freshly-rented replacement doesn't necessarily have /workspace
-        # yet (depends on the image/template's own init) — live testing hit
-        # this twice: scp/rsync into a missing remote directory fails
-        # immediately ("no such file"), silently skipping the whole
-        # restore. Ensure it exists first.
+        null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
         try:
-            subprocess.run(
-                [
-                    "ssh", "-p", str(new_port),
-                    "-o", "StrictHostKeyChecking=no",
-                    "-o", f"UserKnownHostsFile={null_file}",
-                    f"root@{new_host}", "mkdir -p /workspace"
-                ],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30
-            )
+            mkdir_cmd = ["ssh"] + self._ssh_base_args(new_port) + [f"root@{new_host}", "bash -c 'mkdir -p /workspace'"]
+            subprocess.run(mkdir_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
         except Exception:
             pass
 
         if self.use_rsync:
-            print(f"[Restore] Migrating cached workspace via high-speed 'rsync' from {old_backup_dir} to {new_host}:{new_port}...")
+            key_opt = f"-i {self.ssh_key_path} " if (self.ssh_key_path and os.path.exists(self.ssh_key_path)) else ""
+            ssh_opts = f"ssh -p {new_port} {key_opt}-o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}"
+            print(f"[Restore] Uploading workspace via delta 'rsync' to new Salad node {new_host}:{new_port}...")
             cmd = [
-                "rsync",
-                "-az",
-                "-e", f"ssh -p {new_port} -o StrictHostKeyChecking=no -o UserKnownHostsFile={null_file}",
-                to_rsync_path(old_backup_dir) + "/",
-                f"root@{new_host}:/workspace/"
+                "rsync", "-az",
+                "-e", ssh_opts,
+                to_rsync_path(local_backup_dir) + "/",
+                f"root@{new_host}:/workspace/",
             ]
         else:
-            print(f"[Restore] Migrating cached workspace via 'scp' fallback from {old_backup_dir} to {new_host}:{new_port}...")
-            cmd = [
-                "scp",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "UserKnownHostsFile=NUL" if sys.platform == 'win32' else "UserKnownHostsFile=/dev/null",
-                "-P", str(new_port),
-                "-r",
-                os.path.join(old_backup_dir, "."),  # scp (Win32 OpenSSH) wants a native path, not a cygdrive one
-                f"root@{new_host}:/workspace/"
-            ]
-            
+            print(f"[Restore] Uploading workspace via 'scp' to new Salad node {new_host}:{new_port}...")
+            cmd = ["scp", "-P", str(new_port), "-r", "-o", "StrictHostKeyChecking=no", "-o", f"UserKnownHostsFile={null_file}"]
+            if self.ssh_key_path and os.path.exists(self.ssh_key_path):
+                cmd.extend(["-i", self.ssh_key_path])
+            cmd.extend([os.path.join(local_backup_dir, "."), f"root@{new_host}:/workspace/"])
+
         try:
             r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=600)
             if r.returncode == 0:
-                print("[Restore] SUCCESS: Workload workspace migrated successfully!")
-                new_backup_dir = os.path.join(self.backup_root, str(new_inst_id))
-                if os.path.exists(new_backup_dir):
-                    shutil.rmtree(new_backup_dir)
-                os.rename(old_backup_dir, new_backup_dir)
+                print(f"[Restore] SUCCESS: Workspace restored to replacement Salad node ({new_host}:{new_port})!")
                 return True
             else:
-                print(f"[-] Restore failed with exit code {r.returncode}")
+                print(f"[-] Restore returned exit code {r.returncode}")
                 return False
         except Exception as e:
-            print(f"[-] Restore failed with exception: {e}")
+            print(f"[-] Restore error: {e}")
             return False
 
-    def execute_resume_command(self, host, port):
-        """Executes the training resume command inside the replacement container via SSH."""
-        print(f"[Handover] Executing resume command inside replacement: {self.resume_cmd}")
-        null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-        ssh_cmd = [
-            "ssh",
-            "-o", "StrictHostKeyChecking=no",
-            "-o", "UserKnownHostsFile=" + null_file,
-            "-p", str(port),
-            f"root@{host}",
-            f"nohup {self.resume_cmd} > /workspace/resume_output.log 2>&1 &"
-        ]
+    def execute_resume_command(self, host: str, port: int):
+        """Executes the user's training resume command inside the replacement Salad container."""
+        if not self.resume_cmd:
+            return
+        print(f"[Handover] Auto-resuming workload on replacement Salad node: {self.resume_cmd}")
+        remote_script = f"cd /workspace 2>/dev/null || true; nohup {self.resume_cmd} > /workspace/spotwarp_resume.log 2>&1 &"
+        cmd = ["ssh"] + self._ssh_base_args(port) + [f"root@{host}", f"bash -c '{remote_script}'"]
         try:
-            subprocess.Popen(ssh_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            print("[Handover] Resume command launched successfully in remote background.")
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+            print("[+] Workload resumed in background (/workspace/spotwarp_resume.log)")
         except Exception as e:
-            print(f"[-] Handover failed to launch resume command: {e}")
+            print(f"[-] Resume command warning: {e}")
 
-    def _remember_launch_spec(self, inst_key: str, inst: dict):
-        """Records how a Vast instance was launched, from the fields Vast's
-        instances API returns (template_hash_id, image_uuid, disk_space)."""
-        self.launch_specs[inst_key] = {
-            "template_hash_id": inst.get("template_hash_id"),
-            "image": inst.get("image_uuid"),
-            "disk": inst.get("disk_space"),
-            "cuda": inst.get("cuda_max_good"),  # replacement host must be at least this new
-        }
-
-    def _replacement_payload(self, spec):
-        """Rent payload for a failover replacement, plus the minimum host CUDA
-        version it needs (None = no extra constraint).
-
-        Priority: the evicted instance's own template (same image, ports,
-        onstart as the user chose) -> its own image -> DEFAULT_REPLACEMENT_IMAGE.
-        """
-        spec = spec or {}
-        disk = max(int(spec.get("disk") or 0), 20)
-        image = spec.get("image") or DEFAULT_REPLACEMENT_IMAGE
-        # vastai/pytorch "auto" needs a 12.4+ driver; for any other image the only
-        # safe floor we know is the CUDA version it was already running on.
-        if image.startswith("vastai/pytorch"):
-            min_cuda = DEFAULT_REPLACEMENT_MIN_CUDA
-        else:
-            min_cuda = float(spec["cuda"]) if spec.get("cuda") else None
-        if spec.get("template_hash_id"):
-            return {"template_hash_id": spec["template_hash_id"], "disk": disk,
-                    "label": "spotwarp-failover-replacement"}, min_cuda
-        return {
-            "image": image,
-            "disk": disk,
-            "runtype": "ssh_direct",  # "jupyter_ssl" was not a valid Vast.ai runtype at all
-            "label": "spotwarp-failover-replacement",
-            # Confirmed via live testing: with a plain pytorch image, Vast's
-            # ssh_direct runtype alone does not reliably start sshd (a
-            # bare ubuntu image worked fine under the same runtype, so
-            # that image's own entrypoint isn't being fully replaced).
-            # Belt-and-suspenders: explicitly start sshd ourselves.
-            #
-            # Second bug found live-testing A100/H100 tiers specifically
-            # (2026-08-06, not present on the RTX 3060/3090 tiers tested
-            # earlier): on these hosts' Ubuntu 24.04 base image, Vast's
-            # own key-injection writes /root/.ssh/authorized_keys with
-            # permissions sshd's StrictModes rejects ("bad ownership or
-            # modes"), even though the key content itself is correct —
-            # every connection attempt failed "Permission denied
-            # (publickey)" despite the right key being present. Loop-wait
-            # for the file to appear (Vast's injection is asynchronous
-            # relative to our onstart), then fix its permissions.
-            "onstart": (
-                "for i in $(seq 1 60); do "
-                "if [ -f /root/.ssh/authorized_keys ]; then "
-                "chmod 700 /root/.ssh; chmod 600 /root/.ssh/authorized_keys; "
-                "chown root:root /root/.ssh /root/.ssh/authorized_keys; "
-                "break; fi; sleep 2; done; "
-                "service ssh start 2>/dev/null || /usr/sbin/sshd 2>/dev/null || true"
-            ),
-        }, min_cuda
-
-    def _search_vast_candidates(self, match_token: str, exclude_host_id=None, min_cuda=None):
-        """Searches Vast.ai for rentable offers matching a GPU model token.
-
-        Shared by handle_failover (finding a replacement for an eviction)
-        and check_runpod_failback (checking whether a cheaper Vast slot has
-        opened up for an instance currently parked on RunPod) — extracted
-        2026-08-09 so both call sites stay in sync instead of drifting.
-        """
-        # limit=200 (previous value) silently broke failover for any GPU tier
-        # pricier than mid-range: live-testing found the query returns the
-        # N globally cheapest offers across ALL models before our own
-        # gpu_name filtering runs, and premium tiers (H100 etc.) don't crack
-        # the top 200 cheapest listings on the entire marketplace — every
-        # single one got filtered out, so a customer training on an H100 got
-        # "no rentable alternative found" on every real eviction, 100% of
-        # the time. The whole marketplace is ~2,500 listings; 5000 comfortably
-        # covers it without needing a per-GPU-model exact-name whitelist that
-        # would need updating every time Vast adds a new card.
-        q = {"rentable": {"eq": True}, "order": [["dph_total", "asc"]], "limit": 5000}
-
-        # Collect every matching offer (cheapest first), not just the single
-        # cheapest one — a dead/unresponsive host on the first pick shouldn't
-        # end the whole failover attempt.
-        #
-        # "laptop"-suffixed listings (individual gaming laptops rented out,
-        # not dedicated desktop/server cards) were live-testing verified to
-        # be disproportionately unreliable — every dead-on-arrival host hit
-        # during live testing was a "laptop" listing, while ordinary
-        # (non-laptop) cards of the same model booted every time. They're
-        # usually also not meaningfully cheaper, so excluding them costs
-        # little and removes the biggest observed source of failed replacements.
-        #
-        # 'deverified' hosts (failed Vast's own re-verification) were live-
-        # tested 2026-08-12 and confirmed real: one such host produced 4/4
-        # SSH connection failures across separate attempts and, separately,
-        # billed $4.90 in bandwidth for a fresh (uncached) image pull on an
-        # instance that was destroyed within minutes for never becoming
-        # reachable — a real customer would eat that same surprise charge
-        # on an evicted-and-immediately-replaced candidate. Excluding
-        # non-'verified' hosts here removes that failure mode at the source.
-        candidate_offers = []
-        try:
-            r_query = requests.get('https://cloud.vast.ai/api/v0/bundles/', params={'q': json.dumps(q)}, headers=self.headers, timeout=15)
-            if r_query.status_code == 200:
-                offers = r_query.json().get('offers', [])
-                candidate_offers = [
-                    o for o in offers
-                    if match_token in o.get('gpu_name', '').lower()
-                    and 'laptop' not in o.get('gpu_name', '').lower()
-                    and o.get('host_id') != exclude_host_id
-                    and o.get('verification') == 'verified'
-                    and (min_cuda is None or (o.get('cuda_max_good') or 0) >= min_cuda)
-                ]
-        except Exception:
-            pass
-        return candidate_offers
-
-    def _race_rent_vast_candidates(self, candidate_offers, spec=None):
-        """Races up to RACE_SIZE Vast.ai candidate offers concurrently and
-        returns (new_id, new_host, new_port, new_inst) for the cheapest one
-        that becomes SSH-reachable, or None if none did.
-
-        Extracted 2026-08-09 from handle_failover so the same racing-rental
-        mechanics can also drive check_runpod_failback's migration back from
-        RunPod to Vast — this function only rents+verifies; the caller is
-        responsible for restore_backup/start_backup_sync/cleanup, since
-        those differ between "replacing an eviction" and "failing back from
-        RunPod."
-        """
-        RACE_SIZE = 4
-        # 300s was not enough for hosts that still have to pull the image
-        # (2026-09-28: 4/4 candidates timed out). The race still takes the
-        # first reachable host, so a longer ceiling only matters when every
-        # candidate is slow — exactly the case where giving up loses the run.
-        BOOT_TIMEOUT_SECONDS = 420
-        payload_template, _ = self._replacement_payload(spec)
-        SSH_CHECK_TIMEOUT_SECONDS = 60
-        GRACE_PERIOD_SECONDS = 15
-
-        ready_lock = threading.Lock()
-        ready = []  # candidates that reached SSH-ready, awaiting the decision
-        decision_made = threading.Event()
-        winner = {}
-
-        def decide():
-            with ready_lock:
-                if decision_made.is_set() or not ready:
-                    return
-                best = min(ready, key=lambda r: r['price'])
-                winner['id'] = best['id']
-                winner['inst'] = best['inst']
-                winner['host'] = best['host']
-                winner['port'] = best['port']
-                decision_made.set()
-                for r in ready:
-                    if r is not best:
-                        print(f"[i] Candidate {r['attempt_num']}: SSH-ready at ${r['price']:.3f}/hr but not the cheapest of the group (winner: ${best['price']:.3f}/hr) — destroying.")
-                        r['cleanup']()
-                print(f"[+] Candidate {best['attempt_num']} WON the race — cheapest reachable offer at ${best['price']:.3f}/hr ({best['host']}:{best['port']}).")
-
-        def race_one(attempt_num, offer):
-            offer_id = offer['id']
-            gpu_name = offer['gpu_name']
-            price = offer['dph_total']
-            print(f"[+] Racing candidate {attempt_num}/{RACE_SIZE}: Offer {offer_id}: {gpu_name} at ${price:.3f}/hr on Host {offer.get('host_id')}")
-
-            rent_url = f"https://console.vast.ai/api/v0/asks/{offer_id}/"
-            payload = dict(payload_template)
-            try:
-                rent_r = requests.put(rent_url, json=payload, headers=self.headers, timeout=15)
-            except Exception as e:
-                print(f"[-] Candidate {attempt_num}: rent request error: {e}")
-                return
-            if rent_r.status_code != 200:
-                print(f"[-] Candidate {attempt_num}: rental failed: {rent_r.text}")
-                return
-
-            attempt_id = rent_r.json().get('new_contract') or rent_r.json().get('id')
-            print(f"[+] Candidate {attempt_num}: rented replacement, Instance ID: {attempt_id}")
-
-            def cleanup():
-                try:
-                    requests.delete(f"https://console.vast.ai/api/v0/instances/{attempt_id}/", headers=self.headers, timeout=15)
-                except Exception:
-                    pass
-
-            # Renting via this API endpoint does NOT auto-attach the
-            # account's SSH key the way renting through the website does —
-            # without this, the replacement boots with no authorized key
-            # and every SSH/rsync/scp attempt fails with "Permission
-            # denied (publickey)", silently defeating the whole point of
-            # failover (nothing to restore data to).
-            try:
-                acct_r = requests.get('https://console.vast.ai/api/v0/users/current/', headers=self.headers, timeout=15)
-                account_ssh_key = acct_r.json().get('ssh_key') if acct_r.status_code == 200 else None
-                if account_ssh_key:
-                    key_r = requests.post(
-                        f"https://console.vast.ai/api/v0/instances/{attempt_id}/ssh/",
-                        json={"ssh_key": account_ssh_key}, headers=self.headers, timeout=15
-                    )
-                    if key_r.status_code != 200:
-                        print(f"[!] Candidate {attempt_num}: failed to attach SSH key: {key_r.text}")
-                else:
-                    print(f"[!] Candidate {attempt_num}: no SSH key registered on this Vast.ai account — replacement may be unreachable.")
-            except Exception as e:
-                print(f"[!] Candidate {attempt_num}: error attaching SSH key: {e}")
-
-            # Wait for this candidate to boot. Checked every 5s instead of the
-            # old 15s — several tiers live-tested 2026-08-07 (V100, H200,
-            # B200) actually finished booting in well under a minute, so a
-            # coarser poll interval was pure added latency on top of an
-            # already-healthy host, not a meaningful cost saving.
-            attempt_start = time.time()
-            attempt_running = False
-            attempt_inst = None
-            while time.time() - attempt_start < BOOT_TIMEOUT_SECONDS:
-                if decision_made.is_set():
-                    print(f"[i] Candidate {attempt_num}: the race already decided — abandoning.")
-                    cleanup()
-                    return
-                time.sleep(5)
-                try:
-                    r_check = requests.get('https://console.vast.ai/api/v1/instances/', headers=self.headers, timeout=15)
-                except Exception:
-                    continue
-                if r_check.status_code == 200:
-                    instances = r_check.json().get('instances', [])
-                    attempt_inst = next((i for i in instances if i['id'] == attempt_id), None)
-                    if attempt_inst:
-                        status = attempt_inst.get('actual_status')
-                        cur_state = attempt_inst.get('cur_state')
-                        # Requiring the literal word "jupyter" in status_msg
-                        # was live-testing verified to be wrong: current Vast
-                        # images report e.g. "success, running
-                        # vastai/pytorch_cuda-13.2.1-auto/ssh" with no
-                        # "jupyter" substring at all, even once fully booted
-                        # and SSH-reachable. What we actually need (we
-                        # connect over SSH, not Jupyter) is the SSH port
-                        # mapping.
-                        ssh_ready = bool((attempt_inst.get('ports') or {}).get('22/tcp'))
-                        if status == "running" and cur_state == "running" and ssh_ready:
-                            attempt_running = True
-                            break
-
-            if not attempt_running:
-                print(f"[-] Candidate {attempt_num}: boot timed out — destroying.")
-                cleanup()
-                return
-
-            # Boot status "running" is necessary but not sufficient: live
-            # testing 2026-08-07 hit real replacements Vast reported as
-            # "running, sshd started" that were actually unreachable — one
-            # had a private-range public_ipaddr (now handled by
-            # get_ssh_endpoint's _is_private_ip check), another's SSH port
-            # just timed out (dead network path on that specific host,
-            # nothing wrong with our request). Verify SSH reachability
-            # before this candidate can win the race.
-            candidate_host, candidate_port = get_ssh_endpoint(attempt_inst)
-            null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-            print(f"[*] Candidate {attempt_num}: boot confirmed, verifying SSH to root@{candidate_host}:{candidate_port}...")
-
-            ssh_start = time.time()
-            connection_success = False
-            while time.time() - ssh_start < SSH_CHECK_TIMEOUT_SECONDS:
-                if decision_made.is_set():
-                    print(f"[i] Candidate {attempt_num}: the race already decided — abandoning.")
-                    cleanup()
-                    return
-                try:
-                    ssh_check = subprocess.run(
-                        ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=" + null_file,
-                         "-o", "ConnectTimeout=5", "-p", str(candidate_port), f"root@{candidate_host}", "echo ok"],
-                        capture_output=True, text=True, timeout=10
-                    )
-                    if ssh_check.returncode == 0 and "ok" in ssh_check.stdout:
-                        connection_success = True
-                        break
-                except Exception:
-                    pass
-                time.sleep(3)
-
-            if not connection_success:
-                print(f"[-] Candidate {attempt_num}: SSH never became reachable — destroying.")
-                cleanup()
-                return
-
-            with ready_lock:
-                if decision_made.is_set():
-                    print(f"[i] Candidate {attempt_num}: SSH-ready but the race already closed — destroying.")
-                    cleanup()
-                    return
-                is_first = not ready
-                ready.append({
-                    'attempt_num': attempt_num, 'id': attempt_id, 'inst': attempt_inst,
-                    'host': candidate_host, 'port': candidate_port, 'price': price,
-                    'cleanup': cleanup,
-                })
-            print(f"[+] Candidate {attempt_num}: SSH-ready at ${price:.3f}/hr, joining the decision pool.")
-
-            # Only the first candidate to arrive drives the grace-period wait
-            # and makes the call — everyone else (whether they arrive later
-            # and join the pool, or fail outright) is done as soon as they've
-            # reported in. decide() destroys every non-winner in `ready`,
-            # including this thread's own candidate if a cheaper one shows up.
-            if is_first:
-                print(f"[*] Candidate {attempt_num}: first reachable — holding the race open {GRACE_PERIOD_SECONDS}s for cheaper candidates to catch up.")
-                time.sleep(GRACE_PERIOD_SECONDS)
-                decide()
-
-        threads = [threading.Thread(target=race_one, args=(i, offer), daemon=True)
-                   for i, offer in enumerate(candidate_offers[:RACE_SIZE], start=1)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        if 'id' not in winner:
-            return None
-        return (winner['id'], winner['host'], winner['port'], winner['inst'])
-
-    def _dispatch_failover(self, evicted_key, evicted_host_id, evicted_gpu, provider):
-        """Stops tracking the evicted instance and runs its failover in a
-        background thread, so the polling loop keeps watching (and failing
-        over) every other instance in the meantime."""
-        self.tracked_instances.pop(evicted_key, None)
+    def handle_salad_failover(self, container_name: str, old_info: dict):
+        """Handles Same-Cloud (Salad -> Salad) failover when a node is preempted or reallocated."""
+        old_id = old_info.get("instance_id", "unknown")
+        print(f"\n[🚨 SALAD NODE PREEMPTION DETECTED] Container '{container_name}' (Instance {old_id[:8]}) interrupted!")
+        t_start = time.time()
         with self.failover_lock:
-            if evicted_key in self.inflight_failovers:
-                return
-            self.inflight_failovers.add(evicted_key)
+            self.total_failovers += 1
 
-        def run():
-            try:
-                self.handle_failover(evicted_key, evicted_host_id, evicted_gpu, provider=provider)
-            except Exception as e:
-                print(f"[-] Failover for {evicted_key} crashed: {e}")
-            finally:
-                with self.failover_lock:
-                    self.inflight_failovers.discard(evicted_key)
+        self.stop_backup_sync(container_name)
 
-        threading.Thread(target=run, daemon=True, name=f"failover-{evicted_key}").start()
+        print(f"[*] Waiting for SaladCloud Container Engine to allocate replacement node for '{container_name}'...")
+        new_inst = None
+        while time.time() - t_start < 1800:
+            instances = self.get_container_instances(container_name)
+            running = [
+                i for i in instances
+                if i.get("state") == "running" and i.get("ssh_ip") and i.get("ssh_port")
+            ]
+            # Pick a healthy running instance (either a newly allocated ID or recovered instance)
+            candidate = next((i for i in running if i.get("id") != old_id), None)
+            if not candidate and running:
+                candidate = running[0]
+            if candidate:
+                new_inst = candidate
+                break
+            time.sleep(5)
 
-    def handle_failover(self, evicted_id: str, evicted_host_id: any, evicted_gpu: str, provider: str = "vast"):
-        """Triggers replacement renting, data restoration, and connection handover across Vast and RunPod."""
-        print(f"\n[🚨 FAILOVER TRIGGERED] Instance {evicted_id} on {provider.upper()} has been evicted/stopped!")
-        
-        failover_start = time.time()
-        with self.failover_lock:
-            if hasattr(self, 'total_failovers'):
-                self.total_failovers += 1
-            
-        self.stop_backup_sync(evicted_id)
-
-        # Match GPU token
-        KNOWN_MODELS = [
-            "h100", "h200", "a100", "a6000", "a5000", "a4000", "l40s", "l40",
-            "l4", "v100", "4090", "3090", "4080", "3080"
-        ]
-        evicted_gpu_lower = (evicted_gpu or "").lower()
-        match_token = next((m for m in KNOWN_MODELS if m in evicted_gpu_lower), None)
-        if not match_token and evicted_gpu_lower and evicted_gpu_lower != "unknown":
-            match_token = evicted_gpu_lower
-        if not match_token:
-            match_token = "3090"
-            print("[!] Evicted GPU type unknown — defaulting search to RTX 3090 as safe budget fallback.")
-
-        # =========================================================================
-        # BRANCH 1: Evicted from RUNPOD
-        # =========================================================================
-        if provider == "runpod":
-            # Scenario 1: RunPod -> RunPod (Same-cloud rapid failover)
-            if self.failover_policy in ("same-cloud-first", "runpod-only") and self.runpod_api_key:
-                print(f"[*] [Scenario 1: RunPod ➡️ RunPod] Searching RunPod spot capacity for '{match_token}'...")
-                try:
-                    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-                    from runpod_connector import RunPodGPUConnector
-                    rp_client = RunPodGPUConnector(api_key=self.runpod_api_key)
-                    res = rp_client.request_gpu_spot_pod(gpu_type=match_token)
-                    if res:
-                        new_id = f"runpod_{res['pod_id']}"
-                        new_host = res['ip']
-                        new_port = res['ssh_port']
-                        
-                        null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-                        connection_success = False
-                        print(f"[*] Verifying SSH connection to replacement RunPod pod {new_host}:{new_port}...")
-                        for attempt in range(1, 13):
-                            try:
-                                r_ssh = subprocess.run(
-                                    ["ssh", "-p", str(new_port),
-                                     "-o", "StrictHostKeyChecking=no",
-                                     "-o", f"UserKnownHostsFile={null_file}",
-                                     "-o", "ConnectTimeout=8",
-                                     f"root@{new_host}", "echo ok"],
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15
-                                )
-                                if r_ssh.returncode == 0:
-                                    print(f"[+] SUCCESS: RunPod ➡️ RunPod replacement connected on attempt {attempt}!")
-                                    connection_success = True
-                                    break
-                            except Exception:
-                                pass
-                            time.sleep(4)
-                            
-                        if connection_success:
-                            self.restore_backup(evicted_id, new_id, new_host, new_port)
-                            self.start_backup_sync(new_id, new_host, new_port)
-                            self.tracked_instances[new_id] = (new_host, new_port, "runpod", res.get('gpu_name', match_token), "runpod")
-                            
-                            raw_old_id = str(evicted_id).replace("runpod_", "")
-                            rp_client.terminate_pod(raw_old_id)
-                            
-                            if self.resume_cmd:
-                                self.execute_resume_command(new_host, new_port)
-                            print(f"[+] SUCCESS: RunPod ➡️ RunPod failover complete! Pod {new_id} is running.")
-                            return
-                except Exception as rp_err:
-                    print(f"[-] RunPod-to-RunPod attempt error: {rp_err}")
-
-            # Scenario 2: RunPod -> Vast.ai 긴급 우회 (RunPod 스팟 전량 품절 시)
-            if self.failover_policy != "runpod-only" and self.vast_api_key:
-                print(f"[*] [Scenario 2: RunPod ➡️ Vast.ai] RunPod spot out of stock — falling back to Vast.ai for '{match_token}'...")
-                candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=None, min_cuda=DEFAULT_REPLACEMENT_MIN_CUDA)
-                if candidate_offers:
-                    try:
-                        result = self._race_rent_vast_candidates(candidate_offers)
-                        if result:
-                            new_id, new_host, new_port, replacement_inst = result
-                            vast_inst_key = f"vast_{new_id}"
-                            print(f"[+] Vast.ai replacement confirmed reachable! Host: {new_host}, SSH Port: {new_port}")
-                            
-                            self.restore_backup(evicted_id, vast_inst_key, new_host, new_port)
-                            self.start_backup_sync(vast_inst_key, new_host, new_port)
-                            self.tracked_instances[vast_inst_key] = (new_host, new_port, replacement_inst.get('host_id'), replacement_inst.get('gpu_name', match_token), "vast")
-                            
-                            self.vast_parked[vast_inst_key] = {
-                                "host": new_host,
-                                "port": new_port,
-                                "match_token": match_token,
-                                "vast_instance_id": new_id,
-                                "home_cloud": "runpod"
-                            }
-                            print(f"[i] Parked {vast_inst_key} on Vast.ai — will auto-failback to RunPod when '{match_token}' spot capacity returns.")
-                            
-                            try:
-                                sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-                                from runpod_connector import RunPodGPUConnector
-                                raw_old_id = str(evicted_id).replace("runpod_", "")
-                                RunPodGPUConnector(api_key=self.runpod_api_key).terminate_pod(raw_old_id)
-                            except Exception:
-                                pass
-                                
-                            if self.resume_cmd:
-                                self.execute_resume_command(new_host, new_port)
-                            print(f"[+] SUCCESS: RunPod ➡️ Vast.ai failover complete! Workload saved.")
-                            return
-                    except Exception as vast_err:
-                        print(f"[-] Vast fallback failed: {vast_err}")
-
-            print(f"[❌ FAILOVER EXHAUSTED] Could not find any replacement across RunPod and Vast.ai for {evicted_id}!")
+        if not new_inst:
+            print(f"[-] Timed out waiting for replacement Salad node for '{container_name}'.")
             return
 
-        # =========================================================================
-        # BRANCH 2: Evicted from VAST.AI
-        # =========================================================================
-        if provider == "vast":
-            # Scenario 3: Vast.ai -> Vast.ai (초극강 가성비 스팟 유지)
-            candidate_offers = []
-            spec = self.launch_specs.get(evicted_id)
-            _, min_cuda = self._replacement_payload(spec)
-            if self.failover_policy in ("same-cloud-first", "vast-only") and self.vast_api_key:
-                print(f"[*] [Scenario 3: Vast.ai ➡️ Vast.ai] Finding cheapest alternative matching '{match_token}' on Vast.ai...")
-                if spec and spec.get("template_hash_id"):
-                    print(f"[i] Replacement will use the same Vast.ai template as {evicted_id} ({spec['template_hash_id'][:8]}…).")
-                else:
-                    print(f"[i] Replacement image: {(spec or {}).get('image') or DEFAULT_REPLACEMENT_IMAGE}")
-                candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=evicted_host_id, min_cuda=min_cuda)
-                # match_token is the GPU family ("h100"), which also matches other form
-                # factors (H100 SXM vs PCIe vs NVL — different memory bandwidth). Prefer the
-                # exact model that was evicted; fall back to the family only if none is rentable.
-                exact = [o for o in candidate_offers
-                         if (o.get('gpu_name') or '').lower() == (evicted_gpu or '').lower()]
-                if exact:
-                    candidate_offers = exact
-                elif candidate_offers:
-                    print(f"[i] No '{evicted_gpu}' available right now — using the same GPU family ({match_token}).")
+        new_id = new_inst.get("id")
+        new_mach = new_inst.get("machine_id", "unknown")
+        new_host = new_inst.get("ssh_ip")
+        new_port = int(new_inst.get("ssh_port"))
+        elapsed = time.time() - t_start
+        print(f"[+] Replacement Salad Node Active in {elapsed:.1f}s! Instance {new_id[:8]} (Machine {new_mach[:8]}) at {new_host}:{new_port}")
 
-            if candidate_offers:
-                try:
-                    result = self._race_rent_vast_candidates(candidate_offers, spec)
-                    if result:
-                        new_id, new_host, new_port, replacement_inst = result
-                        vast_inst_key = f"vast_{new_id}"
-                        print(f"[+] Replacement confirmed reachable! Host: {new_host}, SSH Port: {new_port}")
-                        
-                        self.restore_backup(evicted_id, vast_inst_key, new_host, new_port)
-                        self.start_backup_sync(vast_inst_key, new_host, new_port)
-                        self.tracked_instances[vast_inst_key] = (new_host, new_port, replacement_inst.get('host_id'), replacement_inst.get('gpu_name', match_token), "vast")
-                        if spec:
-                            self.launch_specs[vast_inst_key] = spec  # a second eviction comes back the same way
-
-                        raw_old_id = str(evicted_id).replace("vast_", "")
-                        print(f"[*] Cleaning up. Destroying evicted primary instance {raw_old_id}...")
-                        requests.delete(f"https://console.vast.ai/api/v0/instances/{raw_old_id}/", headers=self.headers, timeout=15)
-                        
-                        if self.resume_cmd:
-                            self.execute_resume_command(new_host, new_port)
-                        print(f"[+] SUCCESS: Vast.ai ➡️ Vast.ai failover complete! Instance {vast_inst_key} is running (replaced {evicted_id} in {int(time.time() - failover_start)}s).")
-                        return
-                except Exception as e:
-                    print(f"[-] Vast racing rental error: {e}")
-
-            # Scenario 4: Vast.ai -> RunPod 긴급 탈출 (Vast 전 매물 품절 시)
-            if self.failover_policy != "vast-only" and self.runpod_api_key:
-                print(f"[*] [Scenario 4: Vast.ai ➡️ RunPod] Vast.ai has no verified '{match_token}' hosts — falling back to RunPod emergency pod...")
-                try:
-                    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-                    from runpod_connector import RunPodGPUConnector
-                    rp_client = RunPodGPUConnector(api_key=self.runpod_api_key)
-                    res = rp_client.request_gpu_spot_pod(gpu_type=match_token)
-                    if res:
-                        new_id = f"runpod_{res['pod_id']}"
-                        new_host = res['ip']
-                        new_port = res['ssh_port']
-                        
-                        null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-                        connection_success = False
-                        print(f"[*] Verifying SSH connection to RunPod replacement {new_host}:{new_port}...")
-                        for attempt in range(1, 13):
-                            try:
-                                r_ssh = subprocess.run(
-                                    ["ssh", "-p", str(new_port),
-                                     "-o", "StrictHostKeyChecking=no",
-                                     "-o", f"UserKnownHostsFile={null_file}",
-                                     "-o", "ConnectTimeout=8",
-                                     f"root@{new_host}", "echo ok"],
-                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15
-                                )
-                                if r_ssh.returncode == 0:
-                                    print(f"[+] SUCCESS: RunPod Failover complete! Connected on attempt {attempt}.")
-                                    connection_success = True
-                                    break
-                            except Exception:
-                                pass
-                            time.sleep(5)
-                            
-                        if connection_success:
-                            self.restore_backup(evicted_id, new_id, new_host, new_port)
-                            self.start_backup_sync(new_id, new_host, new_port)
-                            self.tracked_instances[new_id] = (new_host, new_port, "runpod", res.get('gpu_name', match_token), "runpod")
-                            
-                            self.runpod_parked[new_id] = {
-                                "host": new_host,
-                                "port": new_port,
-                                "match_token": match_token,
-                                "runpod_pod_id": res['pod_id'],
-                                "home_cloud": "vast"
-                            }
-                            print(f"[i] Parked {new_id} on RunPod — will auto-migrate back to Vast.ai once '{match_token}' returns.")
-                            
-                            raw_old_id = str(evicted_id).replace("vast_", "")
-                            requests.delete(f"https://console.vast.ai/api/v0/instances/{raw_old_id}/", headers=self.headers, timeout=15)
-                            
-                            if self.resume_cmd:
-                                self.execute_resume_command(new_host, new_port)
-                            return
-                except Exception as rp_err:
-                    print(f"[-] RunPod failover fallback failed: {rp_err}")
-
-            print(f"[❌ FAILOVER EXHAUSTED] No reachable replacement could be brought up for evicted instance {evicted_id}.")
-
-    def check_runpod_failback(self):
-        """Scenario 5: Watches instances parked on RunPod and migrates back to Vast.ai when cheap Vast spot returns."""
-        FAILBACK_CHECK_INTERVAL_SECONDS = 30
-        for runpod_id, info in list(self.runpod_parked.items()):
-            last_checked = self.runpod_last_check.get(runpod_id, 0)
-            if time.time() - last_checked < FAILBACK_CHECK_INTERVAL_SECONDS:
-                continue
-            self.runpod_last_check[runpod_id] = time.time()
-
-            match_token = info["match_token"]
-            candidate_offers = self._search_vast_candidates(match_token, exclude_host_id=None, min_cuda=DEFAULT_REPLACEMENT_MIN_CUDA)
-            if not candidate_offers:
-                continue
-
-            print(f"\n[🔄 FAILBACK AVAILABLE] Vast.ai now has '{match_token}' candidates again — migrating {runpod_id} back from RunPod...")
-            try:
-                result = self._race_rent_vast_candidates(candidate_offers)
-                if not result:
-                    continue
-                new_id, new_host, new_port, new_inst = result
-                vast_inst_key = f"vast_{new_id}"
-                print(f"[+] Failback replacement confirmed reachable! Host: {new_host}, SSH Port: {new_port}")
-                
-                self.restore_backup(runpod_id, vast_inst_key, new_host, new_port)
-                self.start_backup_sync(vast_inst_key, new_host, new_port)
-                self.tracked_instances[vast_inst_key] = (new_host, new_port, new_inst.get('host_id'), new_inst.get('gpu_name', match_token), "vast")
-                
-                self.stop_backup_sync(runpod_id)
-                self.tracked_instances.pop(runpod_id, None)
-                sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-                from runpod_connector import RunPodGPUConnector
-                RunPodGPUConnector(api_key=self.runpod_api_key).terminate_pod(info["runpod_pod_id"])
-                
-                del self.runpod_parked[runpod_id]
-                self.runpod_last_check.pop(runpod_id, None)
-                
-                if self.resume_cmd:
-                    self.execute_resume_command(new_host, new_port)
-                print(f"[+] SUCCESS: Failback complete! {vast_inst_key} is now running on cheaper Vast.ai — RunPod pod released.")
-            except Exception as e:
-                print(f"[-] Failback handler error for {runpod_id}: {e}")
-
-    def check_vast_failback(self):
-        """Scenario 6: Watches RunPod-native instances parked on Vast.ai and migrates back to RunPod when spot stock returns."""
-        FAILBACK_CHECK_INTERVAL_SECONDS = 30
-        for vast_id, info in list(self.vast_parked.items()):
-            last_checked = self.vast_last_check.get(vast_id, 0)
-            if time.time() - last_checked < FAILBACK_CHECK_INTERVAL_SECONDS:
-                continue
-            self.vast_last_check[vast_id] = time.time()
-
-            match_token = info["match_token"]
-            try:
-                sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-                from runpod_connector import RunPodGPUConnector
-                rp_client = RunPodGPUConnector(api_key=self.runpod_api_key)
-                stock_info = rp_client.check_spot_stock(match_token)
-                if not stock_info.get("available"):
-                    continue
-
-                print(f"\n[🔄 HOME FAILBACK AVAILABLE] RunPod spot stock has returned for '{match_token}' — migrating {vast_id} back to RunPod...")
-                res = rp_client.request_gpu_spot_pod(gpu_type=match_token)
-                if not res:
-                    continue
-
-                new_id = f"runpod_{res['pod_id']}"
-                new_host = res['ip']
-                new_port = res['ssh_port']
-
-                null_file = "NUL" if sys.platform == 'win32' else "/dev/null"
-                connection_success = False
-                for attempt in range(1, 10):
-                    try:
-                        r_ssh = subprocess.run(
-                            ["ssh", "-p", str(new_port),
-                             "-o", "StrictHostKeyChecking=no",
-                             "-o", f"UserKnownHostsFile={null_file}",
-                             "-o", "ConnectTimeout=8",
-                             f"root@{new_host}", "echo ok"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15
-                        )
-                        if r_ssh.returncode == 0:
-                            connection_success = True
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(3)
-
-                if not connection_success:
-                    print(f"[-] RunPod failback connection failed — staying on Vast.")
-                    continue
-
-                self.restore_backup(vast_id, new_id, new_host, new_port)
-                self.start_backup_sync(new_id, new_host, new_port)
-                self.tracked_instances[new_id] = (new_host, new_port, "runpod", res.get('gpu_name', match_token), "runpod")
-
-                self.stop_backup_sync(vast_id)
-                self.tracked_instances.pop(vast_id, None)
-                raw_vast_id = str(vast_id).replace("vast_", "")
-                requests.delete(f"https://console.vast.ai/api/v0/instances/{raw_vast_id}/", headers=self.headers, timeout=15)
-
-                del self.vast_parked[vast_id]
-                self.vast_last_check.pop(vast_id, None)
-
-                if self.resume_cmd:
-                    self.execute_resume_command(new_host, new_port)
-                print(f"[+] SUCCESS: Home Failback complete! {new_id} is back running on RunPod — temporary Vast instance destroyed.")
-            except Exception as e:
-                print(f"[-] RunPod home failback error for {vast_id}: {e}")
+        if self.verify_ssh_ready(new_host, new_port):
+            self.restore_backup(container_name, new_host, new_port)
+            self.execute_resume_command(new_host, new_port)
+            self.tracked_containers[container_name] = {
+                "instance_id": new_id,
+                "machine_id": new_mach,
+                "host": new_host,
+                "port": new_port,
+            }
+            self.start_backup_sync(container_name, new_id, new_host, new_port)
+            print(f"[✅ SALAD -> SALAD FAILOVER COMPLETE] Workload seamlessly restored on SaladCloud!")
 
     def start_reporting_loop(self):
-        """Starts a background thread to periodically report daemon status to the central server."""
+        """Periodically reports daemon health & failover count to central dashboard."""
         self.reporting_stop_event = threading.Event()
-        self.total_failovers = getattr(self, 'total_failovers', 0)
-        self.saved_dollars = 0.0
-        self.saved_percentage = 70
-
-        # Rough reference on-demand $/hr per GPU model, used only to estimate
-        # savings against what the user is *actually* paying (dph_total from
-        # Vast.ai) — this is still an estimate, not a measurement, since we
-        # have no way to know what they'd have really paid otherwise. Falls
-        # back to a conservative 3x spot-vs-on-demand ratio for unlisted
-        # models rather than a single flat number for every GPU tier.
-        ONDEMAND_REFERENCE = {
-            "h100": 4.50, "h200": 5.50, "a100": 1.80, "a6000": 0.90,
-            "a5000": 0.55, "a4000": 0.35, "l40s": 1.20, "l40": 1.10,
-            "l4": 0.45, "v100": 0.70, "4090": 0.70, "3090": 0.45,
-            "4080": 0.55, "3080": 0.40,
-        }
-
-        def estimate_ondemand_price(gpu_name: str, actual_price: float) -> float:
-            name = (gpu_name or "").lower()
-            for token, price in ONDEMAND_REFERENCE.items():
-                if token in name:
-                    return price
-            return actual_price * 3.0
 
         def report_worker():
             tick_seconds = 30
-
             while not self.reporting_stop_event.is_set():
                 try:
-                    status = self.check_vast_status()
-                    running_instances = [
-                        i for i in status.get("instances", [])
-                        if i.get('actual_status') == 'running'
-                    ] if status.get("status") == "ok" else []
-                    active_count = len(running_instances)
-
-                    for inst in running_instances:
-                        actual_price = inst.get('dph_total') or 0.22
-                        ondemand_price = estimate_ondemand_price(inst.get('gpu_name'), actual_price)
-                        savings_per_tick = max(0.0, (ondemand_price - actual_price)) * (tick_seconds / 3600)
-                        self.saved_dollars += savings_per_tick
-
                     payload = {
-                        "license_key": self.license_key,
-                        "active_instances_count": active_count,
+                        "license_key": self.license_key or "SALAD-TRIAL",
+                        "active_instances_count": len(self.tracked_containers),
                         "total_failovers": self.total_failovers,
-                        "saved_dollars": round(self.saved_dollars, 2),
-                        "saved_percentage": self.saved_percentage
+                        "saved_dollars": 0.0,
+                        "saved_percentage": 80,
                     }
                     requests.post(
                         f"{CENTRAL_SERVER}/api/v1/update_status",
                         json=payload,
-                        headers={"User-Agent": f"SpotWarp-Guard/{VERSION}"},
-                        timeout=5
+                        headers={"User-Agent": f"SpotWarp-SaladGuard/{VERSION}"},
+                        timeout=5,
                     )
                 except Exception:
                     pass
-                
                 for _ in range(tick_seconds):
                     if self.reporting_stop_event.is_set():
                         break
                     time.sleep(1)
-                    
+
         self.reporting_thread = threading.Thread(target=report_worker, daemon=True)
         self.reporting_thread.start()
 
     def run_guard_loop(self):
-        """Main Failover Guard loop: Monitored 24/7 on client machine across Vast.ai and RunPod."""
-        print("==================================================")
-        print(f"🛡️ SpotWarp Failover Guard Agent v{VERSION} (Dual-Cloud)")
-        print("==================================================")
-        print(f"  Provider Mode:    {self.provider.upper()}")
-        print(f"  Failover Policy:  {self.failover_policy}")
-        print(f"  Vast API Key:     {'Configured' if self.vast_api_key else 'Not set'}")
-        print(f"  RunPod API Key:   {'Configured' if self.runpod_api_key else 'Not set'}")
+        """Main 24/7 monitoring loop for SaladCloud Container Engine instances."""
+        print("========================================================")
+        print(f"🛡️ SpotWarp Failover Guard v{VERSION} (SaladCloud Edition)")
+        print("========================================================")
+        print(f"  Target Platform:  SaladCloud Container Engine (Same-Cloud Recovery)")
+        print(f"  Organization:     {self.salad_org or 'Not set'}")
+        print(f"  Project:          {self.salad_project}")
+        print(f"  Container Filter: {self.salad_container or 'All active containers'}")
+        print(f"  Salad API Key:    {'Configured' if self.salad_api_key else 'Not set'}")
         print(f"  Backup Root:      {self.backup_root}")
-        print(f"  Sync Strategy:    {'rsync (delta)' if self.use_rsync else 'scp (fallback)'}")
-        print(f"  Resume Command:   {self.resume_cmd or 'None (state-only sync)'}")
-        print("==================================================")
+        print(f"  Sync Strategy:    {'rsync (delta)' if self.use_rsync else 'scp'}")
+        print(f"  Resume Command:   {self.resume_cmd or 'None (checkpoint sync only)'}")
+        print("========================================================")
 
         if not self.verify_license():
-            print("[SpotWarp Guard] License verification failed. Exiting.")
             sys.exit(1)
 
-        print("[SpotWarp Guard] Failover Guard is ACTIVE. Monitoring Spot workloads across clouds...")
+        if not self.salad_api_key or not self.salad_org:
+            print("[!] SALAD_API_KEY and SALAD_ORG are required to monitor SaladCloud containers.")
+            print("    Run 'spotwarp init' or pass --salad-api-key and --org.")
+            sys.exit(1)
+
         self.start_reporting_loop()
-
-        # Initial Scan: Vast.ai
-        if self.vast_api_key and self.provider in ("auto", "vast"):
-            v_res = self.check_vast_status()
-            if v_res.get("status") == "ok":
-                for inst in v_res.get("instances", []):
-                    if inst.get('actual_status') == 'running':
-                        raw_id = inst['id']
-                        inst_key = f"vast_{raw_id}"
-                        host, port = get_ssh_endpoint(inst)
-                        host_id = inst.get('host_id')
-                        gpu_name = inst.get('gpu_name', 'Unknown')
-                        self.tracked_instances[inst_key] = (host, port, host_id, gpu_name, "vast")
-                        self._remember_launch_spec(inst_key, inst)
-                        print(f"[Tracked] Vast.ai Active Instance: {inst_key} (Host {host_id}, GPU: {gpu_name})")
-                        self.start_backup_sync(inst_key, host, port)
-
-        # Initial Scan: RunPod
-        if self.runpod_api_key and self.provider in ("auto", "runpod"):
-            rp_res = self.check_runpod_status()
-            if rp_res.get("status") == "ok":
-                for pod in rp_res.get("pods", []):
-                    if pod.get('is_running'):
-                        pod_raw_id = pod['id']
-                        pod_key = f"runpod_{pod_raw_id}"
-                        host = pod['ip']
-                        port = pod['ssh_port']
-                        gpu_name = pod.get('gpu_name', 'Unknown')
-                        self.tracked_instances[pod_key] = (host, port, "runpod", gpu_name, "runpod")
-                        print(f"[Tracked] RunPod Active Pod: {pod_key} (GPU: {gpu_name}, SSH: {host}:{port})")
-                        self.start_backup_sync(pod_key, host, port)
+        print("[SpotWarp Guard] Actively monitoring SaladCloud nodes (polling every 5s)...")
 
         try:
             while True:
+                containers = self.list_container_groups()
+                for cname in containers:
+                    if cname in self.inflight_failovers:
+                        continue
+
+                    instances = self.get_container_instances(cname)
+                    running = [
+                        i for i in instances
+                        if i.get("state") == "running" and i.get("ssh_ip") and i.get("ssh_port")
+                    ]
+
+                    if cname not in self.tracked_containers:
+                        if running:
+                            inst = running[0]
+                            inst_id = inst.get("id")
+                            mach_id = inst.get("machine_id", "unknown")
+                            host = inst.get("ssh_ip")
+                            port = int(inst.get("ssh_port"))
+                            self.tracked_containers[cname] = {
+                                "instance_id": inst_id,
+                                "machine_id": mach_id,
+                                "host": host,
+                                "port": port,
+                            }
+                            print(f"\n[Tracked] SaladCloud Container '{cname}' -> Instance {inst_id[:8]} (Machine {mach_id[:8]}, SSH {host}:{port})")
+                            self.start_backup_sync(cname, inst_id, host, port)
+                    else:
+                        prev = self.tracked_containers[cname]
+                        prev_id = prev["instance_id"]
+                        still_alive = any(i.get("id") == prev_id and i.get("state") == "running" for i in running)
+                        if not still_alive:
+                            self.inflight_failovers.add(cname)
+
+                            def _run_fo(c_name=cname, p_info=prev):
+                                try:
+                                    self.handle_salad_failover(c_name, p_info)
+                                finally:
+                                    self.inflight_failovers.discard(c_name)
+
+                            threading.Thread(target=_run_fo, daemon=True, name=f"failover-{cname}").start()
+
+                print(
+                    f"[{time.strftime('%H:%M:%S')}] SaladCloud Guard: Healthy | Protected Containers: {len(self.tracked_containers)} | Failovers: {self.total_failovers}",
+                    end="\r",
+                )
                 time.sleep(5)
-
-                # 1. Vast.ai Polling Loop
-                if self.vast_api_key and self.provider in ("auto", "vast"):
-                    v_res = self.check_vast_status()
-                    if v_res.get("status") == "ok":
-                        current_vast = v_res.get("instances", [])
-                        
-                        # Check evictions
-                        for tracked_key, val in list(self.tracked_instances.items()):
-                            if len(val) == 5:
-                                host, port, host_id, tracked_gpu, prov = val
-                            else:
-                                host, port, host_id, tracked_gpu = val
-                                prov = "vast"
-                            
-                            if prov == "vast":
-                                raw_id = int(str(tracked_key).replace("vast_", ""))
-                                matching = next((i for i in current_vast if i['id'] == raw_id), None)
-                                if not matching or matching.get('actual_status') != 'running':
-                                    gpu_name = matching.get('gpu_name', tracked_gpu) if matching else tracked_gpu
-                                    self._dispatch_failover(tracked_key, host_id, gpu_name, "vast")
-
-                        # Check new Vast instances
-                        for inst in current_vast:
-                            raw_id = inst['id']
-                            inst_key = f"vast_{raw_id}"
-                            # Replacement candidates are rented, raced and adopted (or destroyed) by
-                            # the failover thread itself. Picking one up here while its race is still
-                            # running would start a second backup on it and, once a losing candidate
-                            # is destroyed, mistake that for an eviction and fail over a throwaway.
-                            if inst.get('label') == 'spotwarp-failover-replacement':
-                                continue
-                            if inst_key not in self.tracked_instances and inst.get('actual_status') == 'running':
-                                host, port = get_ssh_endpoint(inst)
-                                gpu_name = inst.get('gpu_name', 'Unknown')
-                                self.tracked_instances[inst_key] = (host, port, inst.get('host_id'), gpu_name, "vast")
-                                self._remember_launch_spec(inst_key, inst)
-                                print(f"\n[Tracked] Found new active Vast instance: {inst_key} (Host {inst.get('host_id')}, GPU: {gpu_name})")
-                                self.start_backup_sync(inst_key, host, port)
-
-                # 2. RunPod Polling Loop
-                if self.runpod_api_key and self.provider in ("auto", "runpod"):
-                    rp_res = self.check_runpod_status()
-                    if rp_res.get("status") == "ok":
-                        current_pods = rp_res.get("pods", [])
-
-                        # Check RunPod evictions
-                        for tracked_key, val in list(self.tracked_instances.items()):
-                            if len(val) == 5:
-                                host, port, host_id, tracked_gpu, prov = val
-                            else:
-                                host, port, host_id, tracked_gpu = val
-                                prov = "runpod" if "runpod" in str(tracked_key) else "vast"
-
-                            if prov == "runpod":
-                                raw_pod_id = str(tracked_key).replace("runpod_", "")
-                                matching = next((p for p in current_pods if p['id'] == raw_pod_id), None)
-                                if not matching or not matching.get('is_running'):
-                                    gpu_name = matching.get('gpu_name', tracked_gpu) if matching else tracked_gpu
-                                    self.handle_failover(tracked_key, "runpod", gpu_name, provider="runpod")
-                                    self.tracked_instances.pop(tracked_key, None)
-
-                        # Check new RunPod pods
-                        for pod in current_pods:
-                            raw_pod_id = pod['id']
-                            pod_key = f"runpod_{raw_pod_id}"
-                            if pod_key not in self.tracked_instances and pod.get('is_running'):
-                                host = pod['ip']
-                                port = pod['ssh_port']
-                                gpu_name = pod.get('gpu_name', 'Unknown')
-                                self.tracked_instances[pod_key] = (host, port, "runpod", gpu_name, "runpod")
-                                print(f"\n[Tracked] Found new active RunPod pod: {pod_key} (GPU: {gpu_name})")
-                                self.start_backup_sync(pod_key, host, port)
-
-                # 3. Dual Failback Checkers
-                self.check_runpod_failback()
-                self.check_vast_failback()
-
-                # Status ticker
-                parked_notes = []
-                if self.runpod_parked:
-                    parked_notes.append(f"{len(self.runpod_parked)} parked on RunPod")
-                if self.vast_parked:
-                    parked_notes.append(f"{len(self.vast_parked)} parked on Vast")
-                p_str = f" ({', '.join(parked_notes)})" if parked_notes else ""
-                print(f"[{time.strftime('%H:%M:%S')}] Guard Status: Healthy. Monitoring {len(self.tracked_instances)} instances{p_str}.", end="\r")
 
         except KeyboardInterrupt:
             print("\n[SpotWarp Guard] Stopping all sync worker threads...")
-            if hasattr(self, 'reporting_stop_event'):
+            if hasattr(self, "reporting_stop_event"):
                 self.reporting_stop_event.set()
-            for inst_id in list(self.stop_events.keys()):
-                self.stop_backup_sync(inst_id)
-            if hasattr(self, 'reporting_thread') and self.reporting_thread:
-                self.reporting_thread.join(timeout=3)
-            print("[SpotWarp Guard] Guard daemon stopped gracefully.")
+            for cname in list(self.stop_events.keys()):
+                self.stop_backup_sync(cname)
+            print("[SpotWarp Guard] Stopped gracefully.")
 
 
-VERSION = "3.4.3"
-CONFIG_DIR = os.path.expanduser("~/.spotwarp")
-CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
-PID_FILE = os.path.join(CONFIG_DIR, "spotwarp.pid")
-LOG_FILE = os.path.join(CONFIG_DIR, "spotwarp_daemon.log")
-
-
-# sniff_local_api_keys() lives once, near the top of this file (~line 88).
-# A second copy used to be defined here -- weaker validation (no rpa_ prefix
-# check, no length check, skipped VAST_API_KEY/RUNPOD_API_KEY env vars) --
-# and being the later definition, it silently won as the real one at import
-# time. Removed 2026-09-07; every call site already falls back to it correctly.
-
-
-def load_config():
+def load_config() -> dict:
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -1416,111 +601,83 @@ def load_config():
     return {}
 
 
-def save_config(cfg):
+def save_config(cfg: dict):
     os.makedirs(CONFIG_DIR, exist_ok=True)
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
 
 def cmd_init():
-    print("==================================================")
-    print("⚡ SpotWarp Quick Setup Wizard (100% Local Setup)")
-    print("==================================================")
+    print("=======================================================")
+    print("⚡ SpotWarp Quick Setup Wizard for SaladCloud (100% Local)")
+    print("=======================================================")
     cfg = load_config()
-    sniffed_vast, sniffed_runpod = sniff_local_api_keys()
+    sniffed_key, sniffed_org, sniffed_proj = sniff_local_salad_credentials()
 
-    current_lic = cfg.get("license_key", "")
-    lic_prompt = f"Enter SpotWarp License Key [{current_lic[:10]}...]: " if current_lic else "Enter SpotWarp License Key: "
+    current_lic = cfg.get("license_key", "") or "SALAD-TRIAL"
+    lic_prompt = f"Enter SpotWarp License Key (press Enter for 14-day Salad Trial) [{current_lic}]: "
     try:
         lic_in = input(lic_prompt).strip()
     except (EOFError, KeyboardInterrupt):
         print("\nSetup cancelled.")
         return
-    if lic_in:
-        cfg["license_key"] = lic_in
-    elif not current_lic:
-        print("\n[!] License key is required. SpotWarp is a paid subscription tool.")
-        print("[!] Get your license key at: https://gpu-action.com/pricing\n")
-        return
+    cfg["license_key"] = lic_in or current_lic
 
-    current_vast = cfg.get("vast_api_key", "") or sniffed_vast
-    if sniffed_vast and not cfg.get("vast_api_key"):
-        print(f"[+] Zero-Config: Auto-detected Vast.ai API Key from ~/.vast_api_key!")
-    
-    vast_prompt = f"Enter Vast.ai API Key [{current_vast[:6]}...]: " if current_vast else "Enter Vast.ai API Key: "
+    current_salad = cfg.get("salad_api_key", "") or sniffed_key
+    salad_prompt = f"Enter SaladCloud API Key [{current_salad[:8]}...]: " if current_salad else "Enter SaladCloud API Key: "
     try:
-        vast_in = input(vast_prompt).strip()
+        salad_in = input(salad_prompt).strip()
     except (EOFError, KeyboardInterrupt):
         print("\nSetup cancelled.")
         return
-    if vast_in:
-        cfg["vast_api_key"] = vast_in
-    elif current_vast:
-        cfg["vast_api_key"] = current_vast
+    if salad_in:
+        cfg["salad_api_key"] = salad_in
+    elif current_salad:
+        cfg["salad_api_key"] = current_salad
 
-    current_runpod = cfg.get("runpod_api_key", "") or sniffed_runpod
-    if sniffed_runpod and not cfg.get("runpod_api_key"):
-        print(f"[+] Zero-Config: Auto-detected RunPod API Key from ~/.runpod/config.toml!")
-
-    runpod_prompt = f"Enter RunPod API Key (optional) [{current_runpod[:6]}...]: " if current_runpod else "Enter RunPod API Key (optional, press Enter to skip): "
+    current_org = cfg.get("salad_org", "") or sniffed_org
+    org_prompt = f"Enter SaladCloud Organization Name [{current_org}]: " if current_org else "Enter SaladCloud Organization Name: "
     try:
-        runpod_in = input(runpod_prompt).strip()
+        org_in = input(org_prompt).strip()
     except (EOFError, KeyboardInterrupt):
-        runpod_in = ""
-    if runpod_in:
-        cfg["runpod_api_key"] = runpod_in
-    elif current_runpod:
-        cfg["runpod_api_key"] = current_runpod
+        print("\nSetup cancelled.")
+        return
+    if org_in:
+        cfg["salad_org"] = org_in
+    elif current_org:
+        cfg["salad_org"] = current_org
 
-    current_backup = cfg.get("backup_dir", "")
-    backup_prompt = "Backup Directory [default: ./backups]: " if not current_backup else f"Backup Directory [{current_backup}]: "
+    current_proj = cfg.get("salad_project", "") or sniffed_proj or "default"
+    proj_prompt = f"Enter SaladCloud Project Name [{current_proj}]: "
+    try:
+        proj_in = input(proj_prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        proj_in = ""
+    cfg["salad_project"] = proj_in or current_proj
+
+    current_cont = cfg.get("salad_container", "")
+    cont_prompt = f"Target Container Name (optional, Enter for all) [{current_cont or 'all'}]: "
+    try:
+        cont_in = input(cont_prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        cont_in = ""
+    if cont_in:
+        cfg["salad_container"] = cont_in
+
+    current_backup = cfg.get("backup_dir", "") or "./backups"
+    backup_prompt = f"Local Backup Directory [{current_backup}]: "
     try:
         backup_in = input(backup_prompt).strip()
     except (EOFError, KeyboardInterrupt):
         backup_in = ""
-    if backup_in:
-        cfg["backup_dir"] = backup_in
-
-    # Provider Mode Selection
-    current_prov = cfg.get("provider", "auto")
-    print("\n[Target Provider Mode]")
-    print("  1. auto   - Automatically detect and monitor both Vast.ai and RunPod (Recommended)")
-    print("  2. vast   - Monitor and protect Vast.ai workloads only")
-    print("  3. runpod - Monitor and protect RunPod workloads only")
-    try:
-        prov_in = input(f"Select Provider Mode [1/2/3, default: {current_prov}]: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        prov_in = ""
-    if prov_in in ("2", "vast"):
-        cfg["provider"] = "vast"
-    elif prov_in in ("3", "runpod"):
-        cfg["provider"] = "runpod"
-    elif prov_in in ("1", "auto"):
-        cfg["provider"] = "auto"
-
-    # Failover Policy Selection
-    current_policy = cfg.get("failover_policy", "same-cloud-first")
-    print("\n[Failover Routing Policy]")
-    print("  1. same-cloud-first - Recover in same cloud first, cross-cloud if out of stock (Recommended)")
-    print("  2. vast-only        - Never switch clouds; strictly stay within Vast.ai")
-    print("  3. runpod-only      - Never switch clouds; strictly stay within RunPod")
-    try:
-        policy_in = input(f"Select Failover Policy [1/2/3, default: {current_policy}]: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        policy_in = ""
-    if policy_in in ("2", "vast-only", "vast"):
-        cfg["failover_policy"] = "vast-only"
-    elif policy_in in ("3", "runpod-only", "runpod"):
-        cfg["failover_policy"] = "runpod-only"
-    elif policy_in in ("1", "same-cloud-first"):
-        cfg["failover_policy"] = "same-cloud-first"
+    cfg["backup_dir"] = backup_in or current_backup
 
     save_config(cfg)
-    print("\n✅ Configuration successfully saved to ~/.spotwarp/config.json (100% Local)")
-    print("✨ You're all set! Start protecting your workloads anytime with:")
+    print("\n✅ Configuration saved to ~/.spotwarp/config.json (100% Local)")
+    print("✨ Start protecting your SaladCloud workloads anytime with:")
     print("   spotwarp start")
     print("   (or 'spotwarp start -d' to run in the background)")
-    print("==================================================")
+    print("=======================================================")
 
 
 def cmd_status():
@@ -1535,11 +692,10 @@ def cmd_status():
         print("⚠️  [SpotWarp Status] Stale PID file found. Daemon is not running.")
         return
 
-    # Check if process is alive
     is_alive = False
     if sys.platform == 'win32':
         try:
-            out = subprocess.check_output(f"tasklist /FI \"PID eq {pid}\"", shell=True).decode()
+            out = subprocess.check_output(f'tasklist /FI "PID eq {pid}"', shell=True).decode(errors="ignore")
             is_alive = str(pid) in out
         except Exception:
             is_alive = False
@@ -1551,7 +707,7 @@ def cmd_status():
             is_alive = False
 
     if is_alive:
-        print(f"🟢 [SpotWarp Status] Guard daemon is ACTIVE (PID: {pid})")
+        print(f"🟢 [SpotWarp Status] SaladCloud Guard daemon is ACTIVE (PID: {pid})")
         print(f"   Log file: {LOG_FILE}")
         if os.path.exists(LOG_FILE):
             print("\n--- Recent Log Lines ---")
@@ -1595,101 +751,85 @@ def cmd_stop():
 
 def cmd_config():
     cfg = load_config()
-    sniffed_v, sniffed_r = sniff_local_api_keys()
-    print("==================================================")
-    print("🔧 SpotWarp Current Configuration (~/.spotwarp/config.json)")
-    print("==================================================")
-    if not cfg and not sniffed_v:
-        print("No configuration saved yet. Run 'spotwarp init' to configure.")
-    else:
-        lic = cfg.get("license_key") or "Not configured (run 'spotwarp init')"
-        vast = cfg.get("vast_api_key", "") or sniffed_v
-        runpod = cfg.get("runpod_api_key", "") or sniffed_r
-        backup = cfg.get("backup_dir", "./backups")
-        provider = cfg.get("provider", "auto")
-        policy = cfg.get("failover_policy", "same-cloud-first")
-        
-        lic_masked = f"{lic[:8]}...{lic[-4:]}" if len(lic) > 12 else lic
-        vast_masked = f"{vast[:4]}...{vast[-4:]}" if len(vast) > 8 else ("Set" if vast else "Not set")
-        runpod_masked = f"{runpod[:4]}...{runpod[-4:]}" if len(runpod) > 8 else ("Set" if runpod else "Not set")
+    sniffed_key, sniffed_org, sniffed_proj = sniff_local_salad_credentials()
+    print("=======================================================")
+    print("🔧 SpotWarp SaladCloud Configuration (~/.spotwarp/config.json)")
+    print("=======================================================")
+    lic = cfg.get("license_key") or "SALAD-TRIAL (14-Day Free Evaluation)"
+    salad_k = cfg.get("salad_api_key", "") or sniffed_key
+    salad_o = cfg.get("salad_org", "") or sniffed_org
+    salad_p = cfg.get("salad_project", "") or sniffed_proj or "default"
+    salad_c = cfg.get("salad_container", "") or "All active containers"
+    backup = cfg.get("backup_dir", "./backups")
 
-        print(f"  License Key:      {lic_masked}")
-        print(f"  Provider Mode:    {provider.upper()}")
-        print(f"  Failover Policy:  {policy}")
-        print(f"  Vast.ai Key:      {vast_masked}" + (" (Auto-detected)" if not cfg.get("vast_api_key") and sniffed_v else ""))
-        print(f"  RunPod Key:       {runpod_masked}" + (" (Auto-detected)" if not cfg.get("runpod_api_key") and sniffed_r else ""))
-        print(f"  Backup Dir:       {backup}")
-    print("==================================================")
+    k_masked = f"{salad_k[:8]}...{salad_k[-4:]}" if len(salad_k) > 12 else ("Set" if salad_k else "Not set")
+    print(f"  License Key:      {lic}")
+    print(f"  Salad API Key:    {k_masked}")
+    print(f"  Organization:     {salad_o or 'Not set'}")
+    print(f"  Project:          {salad_p}")
+    print(f"  Target Container: {salad_c}")
+    print(f"  Backup Dir:       {backup}")
+    print("=======================================================")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="SpotWarp: Zero-Loss Spot GPU Failover Guard (Continuous Delta-Sync + Cross-Cloud Recovery)",
-        prog="spotwarp"
+        description="SpotWarp: Zero-Loss Fault-Tolerance & Checkpoint Failover Daemon for SaladCloud",
+        prog="spotwarp",
     )
     parser.add_argument("-v", "--version", action="version", version=f"SpotWarp v{VERSION}")
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
+    subparsers.add_parser("init", help="Interactive setup wizard for SaladCloud")
 
-    # init command
-    subparsers.add_parser("init", help="Interactive quick setup wizard (saves keys to local config)")
-
-    # start command
-    start_parser = subparsers.add_parser("start", help="Start the failover guard")
+    start_parser = subparsers.add_parser("start", help="Start the SaladCloud failover guard")
     start_parser.add_argument("-d", "--daemon", action="store_true", help="Run guard daemon in the background")
-    start_parser.add_argument("--license-key", default=None, help="SpotWarp license key")
-    start_parser.add_argument("--vast-api-key", default=None, help="Vast.ai API key")
-    start_parser.add_argument("--runpod-api-key", default=None, help="RunPod API key")
-    start_parser.add_argument("--resume-cmd", default=None, help="Training command to resume inside new instance upon failover")
-    start_parser.add_argument("--backup-dir", default=None, help="Local directory for workspace backups")
-    start_parser.add_argument("--provider", choices=["auto", "vast", "runpod"], default=None, help="Target cloud provider to monitor ('auto', 'vast', or 'runpod')")
-    start_parser.add_argument("--failover-policy", choices=["same-cloud-first", "vast-only", "runpod-only"], default=None, help="Failover routing policy ('same-cloud-first', 'vast-only', or 'runpod-only')")
+    start_parser.add_argument("--license-key", default=None, help="SpotWarp license key (optional during 14-day Salad trial)")
+    start_parser.add_argument("--salad-api-key", default=None, help="SaladCloud API key")
+    start_parser.add_argument("--org", default=None, help="SaladCloud organization slug")
+    start_parser.add_argument("--project", default=None, help="SaladCloud project name (default: 'default')")
+    start_parser.add_argument("--container", default=None, help="Specific SaladCloud container group name to protect")
+    start_parser.add_argument("--ssh-key", default=None, help="Path to private SSH key for Salad container access")
+    start_parser.add_argument("--resume-cmd", default=None, help="Training command to auto-resume inside replacement Salad node")
+    start_parser.add_argument("--backup-dir", default=None, help="Local directory for workspace checkpoint backups")
 
-    # status command
     subparsers.add_parser("status", help="Check background daemon status")
-
-    # stop command
     subparsers.add_parser("stop", help="Stop the background daemon")
-
-    # config command
     subparsers.add_parser("config", help="View current local configuration")
 
     args = parser.parse_args()
 
     if not args.command or args.command == "start":
-        # If run as bare `spotwarp`, default to `start`
         cfg = load_config()
-        sniffed_v, sniffed_r = sniff_local_api_keys()
-        lic = getattr(args, "license_key", None) or os.getenv("SPOTWARP_LICENSE") or cfg.get("license_key")
-        if not lic or lic == "TRIAL_LOCAL_PASS":
-            print(f"\n[SpotWarp v{VERSION}] Error: Active license key is required.")
-            print("  1. Run 'spotwarp init' to enter your license key, or")
-            print("  2. Start with: spotwarp start --license-key <YOUR_KEY>")
-            print("  3. Don't have a key? Get one at: https://gpu-action.com/pricing\n")
-            sys.exit(1)
-        vast_k = getattr(args, "vast_api_key", None) or os.getenv("VAST_API_KEY") or cfg.get("vast_api_key", "") or sniffed_v
-        runpod_k = getattr(args, "runpod_api_key", None) or os.getenv("RUNPOD_API_KEY") or cfg.get("runpod_api_key", "") or sniffed_r
+        sniffed_key, sniffed_org, sniffed_proj = sniff_local_salad_credentials()
+
+        lic = getattr(args, "license_key", None) or os.getenv("LICENSE_KEY") or os.getenv("SPOTWARP_LICENSE") or cfg.get("license_key") or "SALAD-TRIAL"
+        salad_k = getattr(args, "salad_api_key", None) or os.getenv("SALAD_API_KEY") or cfg.get("salad_api_key", "") or sniffed_key
+        salad_o = getattr(args, "org", None) or os.getenv("SALAD_ORG") or cfg.get("salad_org", "") or sniffed_org
+        salad_p = getattr(args, "project", None) or os.getenv("SALAD_PROJECT") or cfg.get("salad_project", "") or sniffed_proj or "default"
+        salad_c = getattr(args, "container", None) or os.getenv("SALAD_CONTAINER") or cfg.get("salad_container", "")
+        ssh_k = getattr(args, "ssh_key", None) or os.getenv("SPOTWARP_SSH_KEY") or cfg.get("ssh_key")
         resume_c = getattr(args, "resume_cmd", None) or cfg.get("resume_cmd")
         backup_d = getattr(args, "backup_dir", None) or os.getenv("SPOTWARP_BACKUP_DIR") or cfg.get("backup_dir")
-        provider_m = getattr(args, "provider", None) or cfg.get("provider", "auto")
-        policy_m = getattr(args, "failover_policy", None) or cfg.get("failover_policy", "same-cloud-first")
         daemon_mode = getattr(args, "daemon", False)
 
         if daemon_mode:
             os.makedirs(CONFIG_DIR, exist_ok=True)
-            cmd = [sys.executable, "-u", os.path.abspath(__file__), "start",
-                   "--license-key", lic,
-                   "--vast-api-key", vast_k]
-            if runpod_k:
-                cmd.extend(["--runpod-api-key", runpod_k])
+            cmd = [
+                sys.executable, "-u", os.path.abspath(__file__), "start",
+                "--license-key", lic,
+                "--salad-api-key", salad_k,
+                "--org", salad_o,
+                "--project", salad_p,
+            ]
+            if salad_c:
+                cmd.extend(["--container", salad_c])
+            if ssh_k:
+                cmd.extend(["--ssh-key", ssh_k])
             if resume_c:
                 cmd.extend(["--resume-cmd", resume_c])
             if backup_d:
                 cmd.extend(["--backup-dir", backup_d])
-            if provider_m:
-                cmd.extend(["--provider", provider_m])
-            if policy_m:
-                cmd.extend(["--failover-policy", policy_m])
 
             with open(LOG_FILE, "a", encoding="utf-8") as out:
                 if sys.platform == 'win32':
@@ -1701,20 +841,21 @@ def main():
             with open(PID_FILE, "w", encoding="utf-8") as f:
                 f.write(str(proc.pid))
 
-            print(f"🚀 [SpotWarp Guard v{VERSION}] Started in BACKGROUND (PID: {proc.pid})")
-            print(f"   Log output: {LOG_FILE}")
+            print(f"🚀 [SpotWarp SaladCloud Guard v{VERSION}] Started in BACKGROUND (PID: {proc.pid})")
+            print(f"   Log output:   {LOG_FILE}")
             print(f"   Check status: spotwarp status")
             print(f"   Stop daemon:  spotwarp stop")
             return
 
-        guard = GpuActionGuard(
+        guard = SaladFailoverGuard(
             license_key=lic,
-            vast_api_key=vast_k,
-            runpod_api_key=runpod_k,
+            salad_api_key=salad_k,
+            salad_org=salad_o,
+            salad_project=salad_p,
+            salad_container=salad_c,
+            ssh_key_path=ssh_k,
             resume_cmd=resume_c,
             backup_dir=backup_d,
-            provider=provider_m,
-            failover_policy=policy_m
         )
         guard.run_guard_loop()
 

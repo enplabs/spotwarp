@@ -1,5 +1,5 @@
 # ==============================================================================
-# 🚀 SpotWarp Official Universal Installer (Windows PowerShell)
+# 🚀 SpotWarp Official Universal Installer for SaladCloud (Windows PowerShell)
 # ==============================================================================
 # Usage:
 #   irm https://gpu-action.com/install.ps1 | iex
@@ -13,8 +13,8 @@ Write-Host "  ___) | |_) | (_) | |_ \ V  V / (_| | |  | |_) |  " -ForegroundColo
 Write-Host " |____/| .__/ \___/ \__| \_/\_/ \__,_|_|  | .__/   " -ForegroundColor Cyan
 Write-Host "       |_|                                |_|      " -ForegroundColor Cyan
 Write-Host ""
-Write-Host "SpotWarp: Spot GPU Continuous Backup & Cross-Cloud Failover Daemon" -ForegroundColor White
-Write-Host "Version: v3.4.3" -ForegroundColor Green
+Write-Host "SpotWarp: Zero-Loss Checkpoint Backup & Same-Cloud Failover for SaladCloud" -ForegroundColor White
+Write-Host "Version: v3.5.0" -ForegroundColor Green
 Write-Host ""
 
 $installDir = "$HOME\AppData\Local\Programs\SpotWarp"
@@ -25,7 +25,6 @@ if (-not (Test-Path $installDir)) {
 $binTarget = "$installDir\spotwarp.exe"
 $binaryInstalled = $false
 
-# 1. Attempt Standalone Windows Binary Download (C-Compiled, Python-Free)
 $releaseUrl = "https://github.com/enplabs/spotwarp/releases/latest/download/spotwarp-windows-x64.exe"
 Write-Host "[*] Downloading pre-compiled standalone binary (spotwarp-windows-x64.exe)..." -ForegroundColor Cyan
 try {
@@ -39,10 +38,8 @@ try {
         }
     }
 } catch {
-    # Fallback silently to pip
 }
 
-# 2. Resilient Fallback to pip
 if (-not $binaryInstalled) {
     Write-Host "[*] Falling back to pip installation..." -ForegroundColor Yellow
     $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
@@ -50,10 +47,9 @@ if (-not $binaryInstalled) {
         Write-Host "[!] Python not found in PATH. Please install Python 3.8+ from python.org." -ForegroundColor Yellow
         Exit 1
     }
-    python -m pip install --upgrade --quiet "spotwarp>=3.4.3"
+    python -m pip install --upgrade --quiet "spotwarp"
     Write-Host "[+] Successfully installed spotwarp package!" -ForegroundColor Green
 } else {
-    # Add to User PATH if not present
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     if ($userPath -notlike "*$installDir*") {
         [Environment]::SetEnvironmentVariable("Path", "$installDir;$userPath", "User")
@@ -61,27 +57,14 @@ if (-not $binaryInstalled) {
     }
 }
 
-# 3. Smart Sniffing for Cloud Keys
-$vastKeyFile = "$HOME\.vast_api_key"
-$runpodKeyFile = "$HOME\.runpod\config.toml"
-$hasVast = (Test-Path $vastKeyFile) -or [bool]$env:VAST_API_KEY
-$hasRunpod = (Test-Path $runpodKeyFile) -or [bool]$env:RUNPOD_API_KEY
-
 Write-Host ""
 Write-Host "================================================================" -ForegroundColor White
-Write-Host "[+] SpotWarp v3.4.3 is READY!" -ForegroundColor Green
-if ($hasVast) {
-    Write-Host "    ? Auto-detected Vast.ai API Key" -ForegroundColor Green
-}
-if ($hasRunpod) {
-    Write-Host "    ? Auto-detected RunPod API Key" -ForegroundColor Green
-}
+Write-Host "[+] SpotWarp v3.5.0 (SaladCloud Edition) is READY!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor White
-Write-Host "  1. Complete setup with your license key:" -ForegroundColor White
+Write-Host "  1. Configure your SaladCloud API key & Organization:" -ForegroundColor White
 Write-Host "     spotwarp init" -ForegroundColor Cyan
-Write-Host "     (Or start directly: spotwarp start --license-key <YOUR_KEY> -d)" -ForegroundColor Gray
-Write-Host "  2. Don't have a license key? Get one at:" -ForegroundColor White
-Write-Host "     https://gpu-action.com/pricing" -ForegroundColor Cyan
+Write-Host "  2. Start protecting your SaladCloud containers in background:" -ForegroundColor White
+Write-Host "     spotwarp start -d" -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor White
 Write-Host ""

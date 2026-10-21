@@ -52,8 +52,6 @@ ph_launch_tweet.py
 project_100k_path.py
 project_1m_path.py
 remote_check_balances.py
-runpod_connector.py
-setup.py
 shuffle_test.py
 shuffle_test_v5.py
 simulate_100k.py
@@ -65,7 +63,6 @@ __init__.py
 analyze_new_strategy.py
 analyze_oos_candidates.py
 analyze_results.py
-auto_vast_destroyer.py
 aws_connector.py
 campaign_config.json
 check_8pct_sliding_risk_lookback38.py
@@ -150,3 +147,11 @@ credentials*
 # from the published GitHub release, not built here. Restore it after a fresh
 # checkout or redeploy with:  python packaging/build_windows_zip.py
 static/spotwarp-windows-x64.zip
+sw_reply.py
+templates/
+CREATOR_PARTNER_KIT.md
+static/sitemap.xml
+TONIGHT_B2B_FOLLOWUP_TARGETS.md
+*.bak*
+*_connector.py
+auto_*.py

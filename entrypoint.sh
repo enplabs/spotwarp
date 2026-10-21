@@ -1,66 +1,55 @@
 #!/bin/bash
 set -e
 
-# Default backend verification server URL
 SERVER_URL=${GPU_ACTION_SERVER_URL:-"https://gpu-action.com"}
+LICENSE_VAL=${LICENSE_KEY:-"SALAD-TRIAL"}
 
-echo "============================================="
-echo "   SpotWarp Spot-Guard Bootstrapper v3.4.3"
-echo "============================================="
+echo "=========================================================="
+echo "   SpotWarp Fault-Tolerance Container v3.5.0 (SaladCloud)"
+echo "=========================================================="
 
-if [ -z "$LICENSE_KEY" ]; then
-    echo "⚠️ WARNING: LICENSE_KEY environment variable is not set."
-    echo "⚠️ Spot-Instance Failover Guard is DISABLED."
-    echo "⚠️ To enable protection, sign up at https://gpu-action.com"
-    echo "============================================="
+mkdir -p /workspace/checkpoints
+
+if [ "$LICENSE_VAL" = "SALAD-TRIAL" ] || [ -z "$LICENSE_KEY" ]; then
+    echo "🟢 Zero-Friction Onboarding: 14-Day SaladCloud Evaluation Mode ACTIVE."
+    echo "🛡️ Workspace directory ready at: /workspace/checkpoints"
+    echo "💡 To enable local delta-backup & Same-Cloud (Salad -> Salad) failover"
+    echo "   from your workstation, run:"
+    echo "     pip install spotwarp"
+    echo "     spotwarp start --org <YOUR_SALAD_ORG> -d"
+    echo "🔑 Upgrade to an unlimited license anytime at: https://gpu-action.com"
 else
-    echo "🔑 Verifying license key with $SERVER_URL..."
-    # Simple curl check (follow redirects, silent, output to stdout)
+    echo "🔑 Verifying license key (Twelve-Factor Env) with $SERVER_URL..."
     VERIFY_RESPONSE=$(curl -s -L -X POST \
         -H "Content-Type: application/json" \
         -d "{\"license_key\": \"$LICENSE_KEY\"}" \
-        "$SERVER_URL/api/v1/verify_license")
-    
-    # Parse json for valid status using simple grep/python
+        "$SERVER_URL/api/v1/verify_license" || echo "{}")
+
     VALID=$(echo "$VERIFY_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('valid', False))" 2>/dev/null || echo "false")
     MESSAGE=$(echo "$VERIFY_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin).get('message', ''))" 2>/dev/null || echo "")
 
     if [ "$VALID" = "True" ] || [ "$VALID" = "true" ]; then
-        echo "✅ License verified successfully: $MESSAGE"
-        echo "⚡ Starting SpotWarp Spot-Guard Daemon..."
-
-        # Start daemon in background (assumes vast/runpod api keys are set in environment)
-        spotwarp start --license-key "$LICENSE_KEY" > /var/log/spotwarp-guard.log 2>&1 &
-        echo "🛡️ Spot-Instance Failover Guard is now running in the background."
-        echo "🛡️ Log file: /var/log/spotwarp-guard.log"
+        echo "✅ License verified: $MESSAGE"
+        echo "🛡️ SpotWarp SaladCloud Protection Ready (/workspace/checkpoints)."
     else
-        echo "❌ License verification failed: $MESSAGE"
-        echo "⚠️ Spot-Instance Failover Guard is DISABLED."
+        echo "⚠️ License key not recognized ($MESSAGE) — falling back to 14-Day SaladCloud Evaluation Mode."
     fi
-    echo "============================================="
 fi
+echo "=========================================================="
 
-# Execute main workspace command (e.g. Jupyter or custom CMD)
+# Execute main workspace command (Jupyter Notebook on port 8888 or custom training script)
 if [ $# -eq 0 ]; then
-    echo "🚀 Starting Jupyter Notebook..."
-    # Check if jupyter is installed, fallback to bash if not
+    echo "🚀 Starting Jupyter Server on port 8888..."
     if command -v jupyter &> /dev/null; then
-        # Never expose Jupyter with no auth. Use a caller-provided token if
-        # set, otherwise generate a random one and print it — an open port
-        # 8888 with no token/password on a rented host is an open remote
-        # code execution risk for anyone who can reach it.
         if [ -z "$JUPYTER_TOKEN" ]; then
             JUPYTER_TOKEN=$(python3 -c "import secrets; print(secrets.token_hex(24))")
-            echo "🔐 No JUPYTER_TOKEN provided — generated one for this session:"
-            echo "🔐 $JUPYTER_TOKEN"
-            echo "🔐 Use it to log in, or set JUPYTER_TOKEN yourself next time."
+            echo "🔐 Generated session JUPYTER_TOKEN: $JUPYTER_TOKEN"
         fi
         exec jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token="$JUPYTER_TOKEN"
     else
-        echo "Jupyter not found. Dropping to bash..."
         exec /bin/bash
     fi
 else
-    echo "🚀 Executing custom command: $@"
+    echo "🚀 Executing training workload: $@"
     exec "$@"
 fi

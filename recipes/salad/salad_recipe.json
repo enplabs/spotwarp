@@ -1,24 +1,29 @@
 {
   "name": "spotwarp-zero-eviction-guard",
-  "display_name": "SpotWarp AI Failover Guard (Salad Container Recipe)",
-  "description": "Enterprise-grade spot fault-tolerance for SaladCloud distributed GPU mesh. Automatically detects node disconnects and triggers instantaneous checkpoint failover.",
-  "image": "ghcr.io/enplabs/spotwarp:pytorch2.1",
-  "resources": {
-    "cpu": 4,
-    "memory": 16384,
-    "gpu_classes": [
-      "rtx-3080",
-      "rtx-3090",
-      "rtx-4080",
-      "rtx-4090"
-    ],
-    "storage": 50
+  "display_name": "SpotWarp Fault-Tolerant PyTorch (Zero-Loss Checkpoint Guard)",
+  "description": "Fault-tolerant PyTorch 2.1 / CUDA 12.1 container recipe for SaladCloud. Pre-configured for continuous checkpoint delta-sync and automated Same-Cloud (Salad -> Salad) node reallocation recovery.",
+  "container": {
+    "image": "ghcr.io/enplabs/spotwarp:pytorch2.1",
+    "resources": {
+      "cpu": 4,
+      "memory": 16384,
+      "gpu_classes": [
+        "rtx-3080",
+        "rtx-3090",
+        "rtx-4080",
+        "rtx-4090"
+      ],
+      "storage_amount": 53687091200
+    },
+    "environment_variables": {
+      "LICENSE_KEY": "SALAD-TRIAL",
+      "GPU_ACTION_SERVER_URL": "https://gpu-action.com"
+    },
+    "priority": "high"
   },
-  "environment_variables": {
-    "LICENSE_KEY": "",
-    "SALAD_API_KEY": "",
-    "GPU_ACTION_SERVER_URL": "https://gpu-action.com"
-  },
+  "autostart_policy": true,
+  "restart_policy": "always",
+  "replicas": 1,
   "networking": {
     "protocol": "http",
     "port": 8888,
@@ -26,13 +31,14 @@
   },
   "readiness_probe": {
     "http": {
-      "path": "/",
-      "port": 8888
+      "path": "/tree",
+      "port": 8888,
+      "scheme": "http"
     },
-    "initial_delay_seconds": 30,
+    "initial_delay_seconds": 20,
     "period_seconds": 10,
     "timeout_seconds": 5,
+    "success_threshold": 1,
     "failure_threshold": 3
-  },
-  "restart_policy": "always"
+  }
 }

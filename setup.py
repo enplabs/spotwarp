@@ -1,9 +1,9 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name="spotwarp",
-    version="3.4.3",
-    description="Never lose a training run to a Spot GPU eviction: continuous automatic backup + automatic failover to a replacement GPU on Vast.ai & RunPod",
+    version="3.5.0",
+    description="Zero-Loss Fault-Tolerance & Checkpoint Failover Daemon for SaladCloud Container Engine (Same-Cloud Salad -> Salad Recovery)",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="SpotWarp Team",
@@ -13,7 +13,7 @@ setup(
         "Documentation": "https://gpu-action.com/docs",
         "Source": "https://github.com/enplabs/spotwarp",
     },
-    py_modules=["gpu_action_cli", "runpod_connector"],
+    py_modules=["gpu_action_cli"],
     entry_points={
         "console_scripts": [
             "spotwarp=gpu_action_cli:main",

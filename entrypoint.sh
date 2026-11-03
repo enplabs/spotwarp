@@ -13,10 +13,12 @@ mkdir -p /workspace/checkpoints
 if [ "$LICENSE_VAL" = "SALAD-TRIAL" ] || [ -z "$LICENSE_KEY" ]; then
     echo "🟢 Zero-Friction Onboarding: 14-Day SaladCloud Evaluation Mode ACTIVE."
     echo "🛡️ Workspace directory ready at: /workspace/checkpoints"
-    echo "💡 To enable local delta-backup & Same-Cloud (Salad -> Salad) failover"
-    echo "   from your workstation, run:"
-    echo "     pip install spotwarp"
-    echo "     spotwarp start --org <YOUR_SALAD_ORG> -d"
+    echo "💡 To back up /workspace and restore it after a node loss,"
+    echo "   run these on your own computer (not in this container):"
+    echo "     pip install --upgrade spotwarp"
+    echo "     spotwarp init"
+    echo "     spotwarp start -d --container <YOUR_CONTAINER_GROUP_NAME>"
+    echo "   Setup guide: https://gpu-action.com/salad"
     echo "🔑 Upgrade to an unlimited license anytime at: https://gpu-action.com"
 else
     echo "🔑 Verifying license key (Twelve-Factor Env) with $SERVER_URL..."
